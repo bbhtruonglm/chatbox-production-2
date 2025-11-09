@@ -52,7 +52,7 @@ import { error } from '@/utils/decorator/Error'
 import { loadingV2 } from '@/utils/decorator/Loading'
 import { waterfall } from 'async'
 import { differenceInHours } from 'date-fns'
-import { find, keys, map, mapValues, pick, set, size } from 'lodash'
+import { find, keys, map, mapValues, pick, set, size, throttle } from 'lodash'
 import { container } from 'tsyringe'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -75,6 +75,7 @@ import {
   CalcSpecialPageConfigs,
   type ICalcSpecialPageConfigs,
 } from '@/utils/helper/Conversation/CalcSpecialPageConfigs'
+import { ChatAdapter } from '@/db/ChatAdapter'
 
 /**dữ liệu từ socket */
 interface CustomEvent extends Event {
@@ -125,7 +126,12 @@ class Main {
     private readonly SERVICE_CALC_SPECIAL_PAGE_CONFIGS: ICalcSpecialPageConfigs = container.resolve(
       CalcSpecialPageConfigs
     )
-  ) {}
+  ) {
+    this.loadMoreConversation = throttle(
+      this.loadMoreConversation.bind(this),
+      300
+    )
+  }
 
   /**
    * làm mới dữ liệu được chọn
@@ -158,100 +164,254 @@ class Main {
    */
   @loadingV2(is_loading, 'value')
   @error()
+  // async getConversation(is_first_time?: boolean, is_pick_first?: boolean) {
+  //   /** lưu trạng thái có phải load lần đầu không */
+  //   is_loading_first.value = !!is_first_time
+
+  //   /** nếu đang mất mạng thì không cho gọi api */
+  //   if (!commonStore.is_connected_internet) return
+
+  //   /** nếu không có org_id thì thôi */
+  //   if (!orgStore.selected_org_id) return
+
+  //   /**danh sách id page */
+  //   const PAGE_IDS = keys(pageStore.selected_page_id_list)
+  //   /**cấu hình trang đặc biệt */
+  //   const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
+
+  //   /**sort hội thoại */
+  //   const SORT =
+  //     SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD'
+  //       ? 'unread_message_amount:desc,last_message_time:desc'
+  //       : undefined
+
+  //   /**ghi đè 1 số lọc tin nhắn */
+  //   const OVERWRITE_FILTER: FilterConversation = {}
+
+  //   /** chỉ cho hiện hội thoại của nhân viên và */
+  //   /** nếu không phải là chế độ xem bài viết */
+  //   if (
+  //     SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff &&
+  //     conversationStore.option_filter_page_data.conversation_type !== 'POST'
+  //   ) {
+  //     /** tạo ra filter nhân viên */
+  //     OVERWRITE_FILTER.staff_id = []
+
+  //     /** thêm id mới */
+  //     if (chatbotUserStore.chatbot_user?.user_id)
+  //       OVERWRITE_FILTER.staff_id?.push(chatbotUserStore.chatbot_user?.user_id)
+
+  //     /** thêm id cũ, tránh lỗi */
+  //     if (chatbotUserStore.chatbot_user?.fb_staff_id)
+  //       OVERWRITE_FILTER.staff_id?.push(
+  //         chatbotUserStore.chatbot_user?.fb_staff_id
+  //       )
+  //   }
+
+  //   /** dữ liệu hội thoại */
+  //   let res: QueryConversationResponse
+
+  //   try {
+  //     /** lấy dữ liệu hội thoại */
+  //     res = await this.API_CONVERSATION.readConversations(
+  //       PAGE_IDS,
+  //       orgStore.selected_org_id,
+  //       {
+  //         ...conversationStore.option_filter_page_data,
+  //         ...OVERWRITE_FILTER,
+  //       },
+  //       40,
+  //       SORT,
+  //       after.value
+  //     )
+  //   } catch (e) {
+  //     throw e
+  //   } finally {
+  //     /** tắt loading lần đầu */
+  //     is_loading_first.value = false
+  //   }
+
+  //   /**dữ liệu hội thoại */
+  //   const CONVERSATIONS = res.conversation
+
+  //   /** gắn cờ nếu đã hết dữ liệu */
+  //   if (!size(CONVERSATIONS) || !res.after) is_done.value = true
+
+  //   /** lưu lại after mới */
+  //   after.value = res.after
+
+  //   /** format dữ liệu trả về */
+  //   mapValues(CONVERSATIONS, (conversation, key) => {
+  //     /** tạo ra key cho vitual scroll */
+  //     conversation.data_key = key
+
+  //     /** bỏ qua record của page chat cho page */
+  //     if (conversation.fb_page_id === conversation.fb_client_id)
+  //       delete CONVERSATIONS?.[key]
+  //   })
+
+  //   /** thêm vào danh sách conversation */
+  //   conversationStore.conversation_list = {
+  //     ...conversationStore.conversation_list,
+  //     ...CONVERSATIONS,
+  //   }
+
+  //   /** tự động chọn khách hàng cho lần đầu tiên */
+  //   if (is_first_time) $main.selectDefaultConversation(is_pick_first)
+  // }
+  // async getConversation(is_first_time?: boolean, is_pick_first?: boolean) {
+  //   is_loading_first.value = !!is_first_time
+  //   let use_local = true
+
+  //   if (!commonStore.is_connected_internet) return
+  //   if (!orgStore.selected_org_id) return
+
+  //   const PAGE_IDS = keys(pageStore.selected_page_id_list)
+  //   const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
+  //   const SORT =
+  //     SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD'
+  //       ? 'unread_message_amount:desc,last_message_time:desc'
+  //       : undefined
+
+  //   const OVERWRITE_FILTER: FilterConversation = {}
+  //   if (
+  //     SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff &&
+  //     conversationStore.option_filter_page_data.conversation_type !== 'POST'
+  //   ) {
+  //     OVERWRITE_FILTER.staff_id = []
+  //     if (chatbotUserStore.chatbot_user?.user_id)
+  //       OVERWRITE_FILTER.staff_id?.push(chatbotUserStore.chatbot_user.user_id)
+  //     if (chatbotUserStore.chatbot_user?.fb_staff_id)
+  //       OVERWRITE_FILTER.staff_id?.push(
+  //         chatbotUserStore.chatbot_user.fb_staff_id
+  //       )
+  //   }
+
+  //   let res
+  //   try {
+  //     if (use_local) {
+  //       res = await ChatAdapter.fetchConversations(
+  //         PAGE_IDS,
+  //         orgStore.selected_org_id,
+  //         { ...conversationStore.option_filter_page_data, ...OVERWRITE_FILTER },
+  //         40,
+  //         SORT,
+  //         after.value
+  //       )
+  //     } else {
+  //       /** lấy dữ liệu hội thoại */
+  //       res = await this.API_CONVERSATION.readConversations(
+  //         PAGE_IDS,
+  //         orgStore.selected_org_id,
+  //         {
+  //           ...conversationStore.option_filter_page_data,
+  //           ...OVERWRITE_FILTER,
+  //         },
+  //         40,
+  //         SORT,
+  //         after.value
+  //       )
+  //     }
+  //   } catch (e) {
+  //     throw e
+  //   } finally {
+  //     is_loading_first.value = false
+  //   }
+
+  //   const CONVERSATIONS = res.conversation
+  //   if (!size(CONVERSATIONS) || !res.after) is_done.value = true
+
+  //   after.value = res.after // có thể undefined nếu hết dữ liệu
+  //   if (!res.after || size(res.conversation) === 0) is_done.value = true
+
+  //   mapValues(CONVERSATIONS, (conversation, key) => {
+  //     conversation.data_key = key
+  //     if (conversation.fb_page_id === conversation.fb_client_id)
+  //       delete CONVERSATIONS?.[key]
+  //   })
+
+  //   conversationStore.conversation_list = {
+  //     ...conversationStore.conversation_list,
+  //     ...CONVERSATIONS,
+  //   }
+
+  //   if (is_first_time) $main.selectDefaultConversation(is_pick_first)
+  // }
   async getConversation(is_first_time?: boolean, is_pick_first?: boolean) {
-    /** lưu trạng thái có phải load lần đầu không */
     is_loading_first.value = !!is_first_time
-
-    /** nếu đang mất mạng thì không cho gọi api */
+    const useLocal = ChatAdapter.useLocal
     if (!commonStore.is_connected_internet) return
-
-    /** nếu không có org_id thì thôi */
     if (!orgStore.selected_org_id) return
 
-    /**danh sách id page */
     const PAGE_IDS = keys(pageStore.selected_page_id_list)
-    /**cấu hình trang đặc biệt */
     const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
-
-    /**sort hội thoại */
     const SORT =
       SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD'
         ? 'unread_message_amount:desc,last_message_time:desc'
         : undefined
 
-    /**ghi đè 1 số lọc tin nhắn */
     const OVERWRITE_FILTER: FilterConversation = {}
-
-    /** chỉ cho hiện hội thoại của nhân viên và */
-    /** nếu không phải là chế độ xem bài viết */
     if (
       SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff &&
       conversationStore.option_filter_page_data.conversation_type !== 'POST'
     ) {
-      /** tạo ra filter nhân viên */
       OVERWRITE_FILTER.staff_id = []
-
-      /** thêm id mới */
       if (chatbotUserStore.chatbot_user?.user_id)
-        OVERWRITE_FILTER.staff_id?.push(chatbotUserStore.chatbot_user?.user_id)
-
-      /** thêm id cũ, tránh lỗi */
+        OVERWRITE_FILTER.staff_id.push(chatbotUserStore.chatbot_user.user_id)
       if (chatbotUserStore.chatbot_user?.fb_staff_id)
-        OVERWRITE_FILTER.staff_id?.push(
-          chatbotUserStore.chatbot_user?.fb_staff_id
+        OVERWRITE_FILTER.staff_id.push(
+          chatbotUserStore.chatbot_user.fb_staff_id
         )
     }
 
-    /** dữ liệu hội thoại */
-    let res: QueryConversationResponse
-
     try {
-      /** lấy dữ liệu hội thoại */
-      res = await this.API_CONVERSATION.readConversations(
-        PAGE_IDS,
-        orgStore.selected_org_id,
-        {
-          ...conversationStore.option_filter_page_data,
-          ...OVERWRITE_FILTER,
-        },
-        40,
-        SORT,
-        after.value
-      )
+      let res: { conversation: Record<string, Conversation>; after?: string }
+
+      if (useLocal) {
+        res = await ChatAdapter.fetchConversations(
+          PAGE_IDS,
+          orgStore.selected_org_id,
+          { ...conversationStore.option_filter_page_data, ...OVERWRITE_FILTER },
+          40,
+          SORT,
+          after.value
+        )
+      } else {
+        res = await this.API_CONVERSATION.readConversations(
+          PAGE_IDS,
+          orgStore.selected_org_id,
+          { ...conversationStore.option_filter_page_data, ...OVERWRITE_FILTER },
+          40,
+          SORT,
+          after.value
+        )
+        // lưu cache local để lần sau load nhanh
+        // await db.saveMany(res.conversation)
+      }
+
+      const CONVERSATIONS = res.conversation
+
+      if (!size(CONVERSATIONS) || !res.after) is_done.value = true
+      after.value = res.after
+
+      mapValues(CONVERSATIONS, (conversation, key) => {
+        conversation.data_key = key
+        // loại bỏ các record page chat
+        if (conversation.fb_page_id === conversation.fb_client_id)
+          delete CONVERSATIONS[key]
+      })
+
+      conversationStore.conversation_list = {
+        ...conversationStore.conversation_list,
+        ...CONVERSATIONS,
+      }
+
+      if (is_first_time) $main.selectDefaultConversation(is_pick_first)
     } catch (e) {
-      throw e
+      console.error('Error loading conversations:', e)
     } finally {
-      /** tắt loading lần đầu */
       is_loading_first.value = false
     }
-
-    /**dữ liệu hội thoại */
-    const CONVERSATIONS = res.conversation
-
-    /** gắn cờ nếu đã hết dữ liệu */
-    if (!size(CONVERSATIONS) || !res.after) is_done.value = true
-
-    /** lưu lại after mới */
-    after.value = res.after
-
-    /** format dữ liệu trả về */
-    mapValues(CONVERSATIONS, (conversation, key) => {
-      /** tạo ra key cho vitual scroll */
-      conversation.data_key = key
-
-      /** bỏ qua record của page chat cho page */
-      if (conversation.fb_page_id === conversation.fb_client_id)
-        delete CONVERSATIONS?.[key]
-    })
-
-    /** thêm vào danh sách conversation */
-    conversationStore.conversation_list = {
-      ...conversationStore.conversation_list,
-      ...CONVERSATIONS,
-    }
-
-    /** tự động chọn khách hàng cho lần đầu tiên */
-    if (is_first_time) $main.selectDefaultConversation(is_pick_first)
   }
 
   /**
@@ -660,27 +820,46 @@ class Main {
     )
   }
   /**load thêm hội thoại khi lăn chuột xuống cuối */
+  // loadMoreConversation($event: UIEvent) {
+  //   /**sẽ scroll khi đã đi được số phần trăm trên độ dài  */
+  //   const PERCENT_SCROLL = 90
+
+  //   /**div đang scroll */
+  //   const TARGET: HTMLDivElement = $event.target as HTMLDivElement
+
+  //   /**khoảng cách scroll với bottom */
+  //   let padBehind =
+  //     TARGET?.scrollHeight - TARGET?.scrollTop - TARGET?.clientHeight
+
+  //   if (
+  //     !padBehind ||
+  //     padBehind > TARGET?.scrollHeight * (1 - PERCENT_SCROLL / 100) || // khi đạt mốc 70% scroll thì load thêm dữ liệu
+  //     is_loading.value || // chỉ load thêm khi không có tiến trình khác đang load
+  //     is_done.value // nếu đã hết dữ liệu thì không load nữa
+  //   )
+  //     console.log('load more')
+
+  //   return this.getConversation()
+  // }
+
   loadMoreConversation($event: UIEvent) {
-    /**sẽ scroll khi đã đi được số phần trăm trên độ dài  */
-    const PERCENT_SCROLL = 90
+    const target = $event.target as HTMLDivElement
+    const PERCENT_SCROLL = 70
 
-    /**div đang scroll */
-    const TARGET: HTMLDivElement = $event.target as HTMLDivElement
-
-    /**khoảng cách scroll với bottom */
-    let padBehind =
-      TARGET?.scrollHeight - TARGET?.scrollTop - TARGET?.clientHeight
-
+    const padBehind =
+      target.scrollHeight - target.scrollTop - target.clientHeight
     if (
       !padBehind ||
-      padBehind > TARGET?.scrollHeight * (1 - PERCENT_SCROLL / 100) || // khi đạt mốc 70% scroll thì load thêm dữ liệu
-      is_loading.value || // chỉ load thêm khi không có tiến trình khác đang load
-      is_done.value // nếu đã hết dữ liệu thì không load nữa
+      padBehind > target.scrollHeight * (1 - PERCENT_SCROLL / 100) ||
+      is_loading.value ||
+      is_done.value
     )
       return
 
+    console.log('load more triggered')
     this.getConversation()
   }
+
   /**
    * tự động reload lại trang nếu người dùng focus lại tab sau một khoảng thời
    * gian lớn (VD: 3 tiếng)

@@ -22,7 +22,7 @@ import { useCommonStore } from '@/stores'
 import Loading from '@/components/Loading.vue'
 import Network from './components/Network.vue'
 import AdBlocker from './components/AdBlocker.vue'
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Toast } from './utils/helper/Alert/Toast'
 import { N4SerivcePublicPartner } from './utils/api/N4Service/Partner'
 import { setItem } from './service/helper/localStorage'
@@ -31,6 +31,8 @@ import { container } from 'tsyringe'
 import { QueryString, type IQueryString } from './utils/helper/QueryString'
 import { useKeyboardShortcut } from '@/views/composables/useKeyboardShortcut'
 import { confirm } from './service/helper/alert'
+import type { Conversation } from './db/ChatDB'
+import { loadMockZipIncremental } from './db/ChatZipLoader'
 
 const commonStore = useCommonStore()
 const $toast = container.resolve(Toast)
@@ -126,6 +128,16 @@ class Main {
   }
 }
 const $main = new Main()
+
+onMounted(async () => {
+  try {
+    // chỉ lưu vào Dexie, không gán store
+    await loadMockZipIncremental('/mock.zip')
+    console.log('✅ Mock data loaded to IndexedDB')
+  } catch (e) {
+    console.error('Failed to load mock zip:', e)
+  }
+})
 
 // lấy token từ param nếu có
 $main.getParamToken()
