@@ -42,6 +42,7 @@ import {
   type ICalcSpecialPageConfigs,
 } from '@/utils/helper/Conversation/CalcSpecialPageConfigs'
 import { container } from 'tsyringe'
+import { db } from '@/db/ChatDB'
 
 /**dữ liệu của item */
 interface IConversationItem extends ConversationInfo {
@@ -121,7 +122,7 @@ class Main {
   }
 
   /**click chuột vào 1 khách hàng */
-  clickConversation() {
+  async clickConversation() {
     /** nếu không có key thì không cho click */
     if (
       !$props.source?.fb_page_id ||
@@ -226,7 +227,12 @@ class Main {
 
     /** logic chọn hội thoại mới */
     selectConversation(CONVERSATION)
-
+    console.log(CONVERSATION, 'conversation')
+    if (CONVERSATION.id) {
+      await db.conversations.update(CONVERSATION.id, {
+        unread_message_amount: 0,
+      })
+    }
     /** xóa hội thoại trước đó khỏi danh sách nếu */
     if (
       /** đang ở chế độ lọc chưa đọc */

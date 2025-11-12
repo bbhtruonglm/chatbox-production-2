@@ -1,5 +1,6 @@
+import { URL, fileURLToPath } from 'node:url'
+
 import basicSsl from '@vitejs/plugin-basic-ssl'
-import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -31,6 +32,14 @@ export default defineConfig(() => {
       host: '0.0.0.0',
       port: 8000,
       https: true,
+
+      proxy: {
+        '/backup': {
+          target: 'https://chatbox-backup.botbanhang.vn',
+          changeOrigin: true, // quan trọng để server thấy host gốc khác
+          secure: false, // nếu server HTTPS tự ký
+        },
+      },
     },
   }
 })

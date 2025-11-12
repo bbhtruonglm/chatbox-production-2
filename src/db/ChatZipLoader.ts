@@ -2,50 +2,48 @@ import JSZip from 'jszip'
 import _ from 'lodash'
 import { db } from './ChatDB'
 
-export async function loadMockZipIncremental(url: string) {
-  // 1. fetch file zip
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to fetch ${url}`)
-  const blob = await res.blob()
+/**
+ * Load zip từ URL (hoặc Blob trực tiếp), giải nén file .jsonb
+ * @param input URL string hoặc Blob
+ */
+export async function loadZipJsonb(input: string | Blob) {
+  try {
+    let blob: Blob
 
-  // 2. giải nén zip
-  const zip = await JSZip.loadAsync(blob)
+    if (typeof input === 'string') {
+      // fetch từ URL
+      const res = await fetch(input)
+      if (!res.ok) throw new Error(`Failed to fetch ${input}`)
+      blob = await res.blob()
+    } else {
+      // đã là Blob
+      blob = input
+    }
 
-  // 3. tìm file JSON đầu tiên
-  const fileName = _.find(Object.keys(zip.files), f => f.endsWith('.json'))
-  if (!fileName) throw new Error('No JSON file found in zip')
+    // Giải nén zip
+    const zip = await JSZip.loadAsync(blob)
 
-  const file = zip.file(fileName)!
-  const text = await file.async('string')
-  const json = JSON.parse(text)
+    // Tìm file .jsonb đầu tiên
+    const fileName = _.find(Object.keys(zip.files), f => f.endsWith('.jsonb'))
+    if (!fileName) throw new Error('No .jsonb file found in zip')
 
-  // 4. chuẩn hóa dữ liệu conversation
-  const conversations = json.data.conversation as Record<string, any>
+    const file = zip.file(fileName)!
+    const text = await file.async('string')
 
-  // 5. lấy last_update hiện tại
-  const lastUpdateEntry = await db.meta.get('last_update')
+    // Mỗi object trên 1 line
+    const lines = text.split('\n').filter(Boolean)
 
-  const lastUpdate = lastUpdateEntry?.value ?? 0
+    // Parse JSON
+    const list = lines.map(line => JSON.parse(line))
 
-  console.log(lastUpdate, 'last update')
+    // KeyBy `_id` để bulkPut vào Dexie
+    const keyed = _.keyBy(list, '_id')
+    await db.saveMany(keyed)
 
-  // 6. lọc những bản ghi mới hoặc đã thay đổi so với last_update
-  const newConvs = _.pickBy(conversations, (c: any) => {
-    const updated = c.last_message_time || Date.now()
-    return updated > lastUpdate
-  })
-
-  console.log(newConvs, 'new conversation')
-  // 7. chuẩn hóa + key lại bằng id
-  const list = _.map(newConvs, (c, id) => ({ id, ...c }))
-  const keyed = _.keyBy(list, 'id')
-
-  // 8. lưu toàn bộ vào IndexedDB
-  await db.saveMany(keyed)
-
-  // 9. cập nhật last_update
-  await db.meta.put({ key: 'last_update', value: Date.now() })
-
-  // 10. trả về list (nếu muốn hiển thị UI)
-  return list
+    console.log(`✅ Loaded ${list.length} records to IndexedDB`)
+    return list
+  } catch (e) {
+    console.error('Failed to load zip jsonb:', e)
+    return []
+  }
 }

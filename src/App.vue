@@ -20,19 +20,17 @@
 import { useCommonStore } from '@/stores'
 
 import Loading from '@/components/Loading.vue'
-import Network from './components/Network.vue'
-import AdBlocker from './components/AdBlocker.vue'
-import { onMounted, ref } from 'vue'
-import { Toast } from './utils/helper/Alert/Toast'
-import { N4SerivcePublicPartner } from './utils/api/N4Service/Partner'
-import { setItem } from './service/helper/localStorage'
-import { error } from './utils/decorator/Error'
-import { container } from 'tsyringe'
-import { QueryString, type IQueryString } from './utils/helper/QueryString'
 import { useKeyboardShortcut } from '@/views/composables/useKeyboardShortcut'
-import { confirm } from './service/helper/alert'
-import type { Conversation } from './db/ChatDB'
-import { loadMockZipIncremental } from './db/ChatZipLoader'
+import { container } from 'tsyringe'
+import { onMounted } from 'vue'
+import AdBlocker from './components/AdBlocker.vue'
+import Network from './components/Network.vue'
+import { loadZipJsonb } from './db/ChatZipLoader'
+import { setItem } from './service/helper/localStorage'
+import { N4SerivcePublicPartner } from './utils/api/N4Service/Partner'
+import { error } from './utils/decorator/Error'
+import { Toast } from './utils/helper/Alert/Toast'
+import { QueryString, type IQueryString } from './utils/helper/QueryString'
 
 const commonStore = useCommonStore()
 const $toast = container.resolve(Toast)
@@ -132,7 +130,9 @@ const $main = new Main()
 onMounted(async () => {
   try {
     // chỉ lưu vào Dexie, không gán store
-    await loadMockZipIncremental('/mock.zip')
+    await loadZipJsonb(
+      'org_id-f48ef6f6bd05467b8b66b1602b27913f-date-1762568491659-conversation.zip'
+    )
     console.log('✅ Mock data loaded to IndexedDB')
   } catch (e) {
     console.error('Failed to load mock zip:', e)
