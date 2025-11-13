@@ -143,6 +143,8 @@ export interface ConversationInfo {
   has_new_info_from_ext?: boolean
   /** Mô tả huấn luyện AI */
   ai_description?: string
+  /** id conversation */
+  id?: string
 }
 
 /**dữ liệu khách hàng dạng obj để dễ update */

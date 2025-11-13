@@ -203,6 +203,7 @@ import type {
 import type { CbError } from '@/service/interface/function'
 import type { DebouncedFunc } from 'lodash'
 import type { ConversationInfo } from '@/service/interface/app/conversation'
+import { db } from '@/db/ChatDB'
 
 /**dữ liệu từ socket */
 interface CustomEvent extends Event {
@@ -275,7 +276,7 @@ onMounted(() => {
   window.addEventListener('chatbox_socket_message', socketNewMessage)
 
   // cập nhật tin nhắn
-  window.addEventListener('chatbox_socket_update_message', socketUpdateMssage)
+  window.addEventListener('chatbox_socket_update_message', socketUpdateMessage)
 })
 
 // hủy lắng nghe sự kiện từ socket khi component bị hủy
@@ -286,7 +287,7 @@ onUnmounted(() => {
   // cập nhật tin nhắn
   window.removeEventListener(
     'chatbox_socket_update_message',
-    socketUpdateMssage
+    socketUpdateMessage
   )
 })
 
@@ -334,19 +335,133 @@ function isLastPageMessage(message: MessageInfo, index: number) {
   // nếu là tin nhắn cuối cùng của nhân viên gửi
   return index === last_client_message_index.value
 }
-/**xử lý socket tin nhắn mới */
+// /**xử lý socket tin nhắn mới */
+// function socketNewMessage({ detail }: CustomEvent) {
+//   // nếu không có dữ liệu thì thôi
+//   if (!detail) return
+
+//   // nếu không phải của khách hàng đang chọn thì chặn
+//   if (
+//     detail.fb_page_id !== select_conversation.value?.fb_page_id ||
+//     detail.fb_client_id !== select_conversation.value.fb_client_id
+//   )
+//     return
+
+//   // nếu là tin nhắn của khách thì gửi cho toàn bộ các widget
+//   if (detail?.message_type === 'client' && detail?.message_text) {
+//     document.querySelectorAll('iframe')?.forEach(iframe => {
+//       iframe?.contentWindow?.postMessage(
+//         {
+//           from: 'CHATBOX',
+//           type: 'CLIENT_MESSAGE',
+//           payload: { message: detail?.message_text },
+//         },
+//         '*'
+//       )
+//     })
+//   }
+
+//   // nếu là dạng comment bài post thì loại bỏ các post cũ, để post mới sẽ lên đầu
+//   if (size(detail.comment))
+//     remove(messageStore.list_message, message => message._id === detail._id)
+
+//   // lấy div chứa danh sách tin nhắn
+//   const LIST_MESSAGE = document.getElementById(messageStore.list_message_id)
+
+//   /** vị trí scroll */
+//   const SCROLL_POSITION =
+//     (LIST_MESSAGE?.scrollTop || 0) + (LIST_MESSAGE?.clientHeight || 0)
+
+//   /** có đang scroll xuống dưới cùng không? */
+//   const IS_BOTTOM = SCROLL_POSITION === LIST_MESSAGE?.scrollHeight
+
+//   // thêm tin nhắn vào danh sách
+//   messageStore.list_message.push(detail)
+
+//   // xử lý khi gặp trường hợp phát hiện tin nhắn chờ
+//   if (detail?.message_mid)
+//     remove(
+//       messageStore.send_message_list,
+//       message => message.message_id === detail?.message_mid
+//     )
+
+//   // nếu đang ở vị trí bottom thì dùng scrollToBottomMessage
+//   if (IS_BOTTOM) scrollToBottomMessage(messageStore.list_message_id)
+// }
+// /**xử lý socket cập nhật tin nhắn hiện tại */
+// function socketUpdateMssage({ detail }: CustomEvent) {
+//   // nếu không có dữ liệu thì thôi
+//   if (!detail) return
+
+//   // nếu không phải của khách hàng đang chọn thì chặn
+//   if (
+//     detail.fb_page_id !== select_conversation.value?.fb_page_id ||
+//     detail.fb_client_id !== select_conversation.value.fb_client_id
+//   )
+//     return
+
+//   // cập nhật dữ liệu của tin nhắn
+//   messageStore.list_message?.forEach(message => {
+//     // tìm đến tin nhắn bằng id, sau đó sao chép dữ liệu mới vào object cũ
+//     if (message._id === detail._id) Object.assign(message, detail)
+//   })
+// }
+
+/** Cập nhật conversation trong IndexedDB theo fb_page_id + fb_client_id */
+async function updateConversationInDB(detail: any) {
+  try {
+    if (!detail.fb_page_id || !detail.fb_client_id) return
+
+    const convKey = `${detail.fb_page_id}__${detail.fb_client_id}`
+    console.log(convKey, 'key')
+    const conv = await db.conversations.get(convKey)
+    console.log(conv, 'conversation')
+    const lastMessageTime = detail.last_message_time || Date.now()
+    console.log(lastMessageTime)
+    if (!conv) {
+      // nếu chưa có conversation thì tạo mới
+      await db.conversations.put({
+        id: convKey,
+        fb_page_id: detail.fb_page_id,
+        fb_client_id: detail.fb_client_id,
+        last_message: detail.message_text,
+        last_message_id: detail._id,
+        last_message_type: detail.message_type,
+        last_message_time: lastMessageTime,
+        unread_message_amount: detail.message_type === 'client' ? 1 : 0,
+      })
+    } else if (lastMessageTime > (conv.last_message_time || 0)) {
+      // nếu đã có, update nếu tin nhắn mới hơn
+      const unread = conv.unread_message_amount || 0
+      await db.conversations.update(convKey, {
+        last_message: detail.message_text || conv.last_message,
+        last_message_id: detail._id,
+        last_message_type: detail.message_type,
+        last_message_time: lastMessageTime,
+        unread_message_amount:
+          detail.message_type === 'client' ? unread + 1 : unread,
+      })
+    }
+  } catch (e) {
+    console.error('Failed to update conversation in IndexedDB', e)
+  }
+}
+
+/** Xử lý tin nhắn mới từ socket */
 function socketNewMessage({ detail }: CustomEvent) {
-  // nếu không có dữ liệu thì thôi
   if (!detail) return
 
-  // nếu không phải của khách hàng đang chọn thì chặn
+  // 1. Update DB cho tất cả conversation
+  updateConversationInDB(detail)
+
+  // 2. Chỉ update UI nếu là conversation đang chọn
   if (
     detail.fb_page_id !== select_conversation.value?.fb_page_id ||
     detail.fb_client_id !== select_conversation.value.fb_client_id
   )
     return
 
-  // nếu là tin nhắn của khách thì gửi cho toàn bộ các widget
+  // Nếu là tin nhắn client, gửi cho iframe
   if (detail?.message_type === 'client' && detail?.message_text) {
     document.querySelectorAll('iframe')?.forEach(iframe => {
       iframe?.contentWindow?.postMessage(
@@ -360,51 +475,46 @@ function socketNewMessage({ detail }: CustomEvent) {
     })
   }
 
-  // nếu là dạng comment bài post thì loại bỏ các post cũ, để post mới sẽ lên đầu
+  // Nếu là comment, loại bỏ comment cũ trùng id
   if (size(detail.comment))
-    remove(messageStore.list_message, message => message._id === detail._id)
+    remove(messageStore.list_message, m => m._id === detail._id)
 
-  // lấy div chứa danh sách tin nhắn
   const LIST_MESSAGE = document.getElementById(messageStore.list_message_id)
-
-  /** vị trí scroll */
   const SCROLL_POSITION =
     (LIST_MESSAGE?.scrollTop || 0) + (LIST_MESSAGE?.clientHeight || 0)
-
-  /** có đang scroll xuống dưới cùng không? */
   const IS_BOTTOM = SCROLL_POSITION === LIST_MESSAGE?.scrollHeight
 
-  // thêm tin nhắn vào danh sách
   messageStore.list_message.push(detail)
 
-  // xử lý khi gặp trường hợp phát hiện tin nhắn chờ
   if (detail?.message_mid)
     remove(
       messageStore.send_message_list,
-      message => message.message_id === detail?.message_mid
+      m => m.message_id === detail?.message_mid
     )
 
-  // nếu đang ở vị trí bottom thì dùng scrollToBottomMessage
   if (IS_BOTTOM) scrollToBottomMessage(messageStore.list_message_id)
 }
-/**xử lý socket cập nhật tin nhắn hiện tại */
-function socketUpdateMssage({ detail }: CustomEvent) {
-  // nếu không có dữ liệu thì thôi
+
+/** Xử lý cập nhật tin nhắn từ socket */
+function socketUpdateMessage({ detail }: CustomEvent) {
   if (!detail) return
 
-  // nếu không phải của khách hàng đang chọn thì chặn
+  // 1. Update DB
+  updateConversationInDB(detail)
+
+  // 2. Update UI nếu conversation đang chọn
   if (
     detail.fb_page_id !== select_conversation.value?.fb_page_id ||
     detail.fb_client_id !== select_conversation.value.fb_client_id
   )
     return
 
-  // cập nhật dữ liệu của tin nhắn
+  // Update nội dung tin nhắn trên list_message
   messageStore.list_message?.forEach(message => {
-    // tìm đến tin nhắn bằng id, sau đó sao chép dữ liệu mới vào object cũ
     if (message._id === detail._id) Object.assign(message, detail)
   })
 }
+
 /**lắng nghe sự kiện khi scroll danh sách tin nhắn */
 function onScrollMessage($event: Event) {
   // xử lý ẩn hiện nút về bottom

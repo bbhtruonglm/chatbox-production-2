@@ -76,6 +76,7 @@ import {
   type ICalcSpecialPageConfigs,
 } from '@/utils/helper/Conversation/CalcSpecialPageConfigs'
 import { ChatAdapter } from '@/db/ChatAdapter'
+import type { Conversation } from '@/db/ChatDB'
 
 /**dữ liệu từ socket */
 interface CustomEvent extends Event {
