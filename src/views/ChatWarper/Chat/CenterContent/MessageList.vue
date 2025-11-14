@@ -412,7 +412,7 @@ async function updateConversationInDB(detail: any) {
   try {
     if (!detail.fb_page_id || !detail.fb_client_id) return
 
-    const convKey = `${detail.fb_page_id}__${detail.fb_client_id}`
+    const convKey = `${detail.fb_page_id}_${detail.fb_client_id}`
     console.log(convKey, 'key')
     const conv = await db.conversations.get(convKey)
     console.log(conv, 'conversation')
@@ -450,7 +450,7 @@ async function updateConversationInDB(detail: any) {
 /** Xử lý tin nhắn mới từ socket */
 function socketNewMessage({ detail }: CustomEvent) {
   if (!detail) return
-
+  console.log('socket new')
   // 1. Update DB cho tất cả conversation
   updateConversationInDB(detail)
 
@@ -498,7 +498,7 @@ function socketNewMessage({ detail }: CustomEvent) {
 /** Xử lý cập nhật tin nhắn từ socket */
 function socketUpdateMessage({ detail }: CustomEvent) {
   if (!detail) return
-
+  console.log('socket udpate')
   // 1. Update DB
   updateConversationInDB(detail)
 

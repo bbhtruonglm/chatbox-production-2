@@ -229,7 +229,7 @@ class Main {
     selectConversation(CONVERSATION)
     console.log(CONVERSATION, 'conversation')
     if (CONVERSATION.id) {
-      console.log('hahahahahhahaha', CONVERSATION.id)
+      // console.log('hahahahahhahaha', CONVERSATION.id)
       await db.conversations.update(CONVERSATION.id, {
         unread_message_amount: 0,
       })

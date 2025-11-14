@@ -474,7 +474,7 @@ class Main {
     ) {
       return
     }
-
+    console.log('on Realtime Update hahahahahahah')
     /** nếu không có dữ liệu thì thôi */
     if (!detail) return
 
@@ -530,7 +530,7 @@ class Main {
       /** làm mới thời gian nhân viên hiện tại đọc tin nhắn */
       this.hardRenewCurrentStaffRead()
     }
-
+    console.log('111111')
     /** không đẩy hội thoại lên đầu nếu */
     if (
       /** nếu thời gian giống nhau, thì cũng không thay đổi vị trí */
@@ -542,6 +542,7 @@ class Main {
       (SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD' &&
         conversation?.last_message_type === 'page')
     ) {
+      console.log('22222222')
       /**
        * 1. Có socket
        * 2. Lọc không phản hồi + client hoặc Các trạng thái khác
@@ -587,6 +588,7 @@ class Main {
         }
       }
     } else {
+      console.log('33333')
       /** nạp dữ liệu vào danh sách hội thoại lên đầu */
       /**
        * Check xem có đang filter không, có phải từ cient không
@@ -596,15 +598,18 @@ class Main {
         (conversationStore.option_filter_page_data.not_response_client &&
           conversation?.last_message_type === 'client')
       ) {
+        console.log('444444444')
         /** xoá dữ liệu cũ */
         delete conversation_list[conversation.data_key]
+
+        console.log(conversation_list, 'length')
 
         /** thêm dữ liệu mới lên đầu của obj */
         conversation_list = {
           [conversation.data_key]: conversation,
           ...conversation_list,
         }
-
+        console.log('5555555555')
         /** nạp lại store */
         conversationStore.conversation_list = conversation_list
 

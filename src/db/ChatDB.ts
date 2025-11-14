@@ -47,7 +47,7 @@ class ChatDB extends Dexie {
   /** Save nhiều conversation và update last_update */
   async saveMany(mapConvs: Record<string, Conversation>) {
     const list = _.map(mapConvs, c => {
-      const id = `${c.fb_page_id}__${c.fb_client_id}`
+      const id = `${c.fb_page_id}_${c.fb_client_id}`
       return { ...c, id, last_update: Date.now() }
     })
     if (!list.length) return
@@ -66,7 +66,7 @@ class ChatDB extends Dexie {
 
   /** Cập nhật conversation từ tin nhắn mới */
   async updateFromMessage(detail: any) {
-    const id = `${detail.fb_page_id}__${detail.fb_client_id}`
+    const id = `${detail.fb_page_id}_${detail.fb_client_id}`
     const conv = await this.conversations.get(id)
     const lastMessageTime = detail.last_message_time || Date.now()
     if (!conv) {
@@ -103,10 +103,15 @@ class ChatDB extends Dexie {
   async filter(
     filter: any,
     after?: string,
-    limit: number = 50
+    limit: number = 50,
+    pageIds?: string[]
   ): Promise<{ conversations: Conversation[]; after?: string }> {
     let collection = this.conversations.toCollection()
 
+    // 🔹 Lọc theo pageIds trước tiên để giới hạn dataset
+    if (pageIds?.length) {
+      collection = collection.filter(c => pageIds.includes(c.fb_page_id))
+    }
     // --- filter cơ bản ---
     if (filter.unread_message === 'true')
       collection = collection.filter(c => (c.unread_message_amount || 0) > 0)

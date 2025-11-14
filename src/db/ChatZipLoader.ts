@@ -1,5 +1,6 @@
+import _, { size } from 'lodash'
+
 import JSZip from 'jszip'
-import _ from 'lodash'
 import { db } from './ChatDB'
 
 export async function loadZip(url: string) {
@@ -22,13 +23,13 @@ export async function loadZip(url: string) {
     for (const conv of list) {
       if (!conv.fb_page_id || !conv.fb_client_id) continue
 
-      // Composite key
-      const id = `${conv.fb_page_id}__${conv.fb_client_id}`
+      /** Composite key */
+      const id = `${conv.fb_page_id}_${conv.fb_client_id}`
 
-      // Lấy bản ghi hiện tại trong DB
+      /** Lấy bản ghi hiện tại trong DB */
       const existing = await db.conversations.get(id)
 
-      // Nếu chưa có hoặc last_message_time trong file mới hơn, lưu/update
+      /** Nếu chưa có hoặc last_message_time trong file mới hơn, lưu/update */
       if (
         !existing ||
         (conv.last_message_time || 0) > (existing.last_message_time || 0)
@@ -37,16 +38,16 @@ export async function loadZip(url: string) {
       }
     }
 
-    // Bulk put các bản ghi cần cập nhật
-    if (_.size(updatedRecords)) {
+    /** Bulk put các bản ghi cần cập nhật */
+    if (size(updatedRecords)) {
       await db.saveMany(updatedRecords)
-      console.log(`✅ Updated ${_.size(updatedRecords)} records in IndexedDB`)
+      console.log(`✅ Updated ${size(updatedRecords)} records in IndexedDB`)
     } else {
       console.log('✅ No new updates, IndexedDB is up to date')
     }
 
-    // Cập nhật last_update nếu có bản ghi mới
-    if (_.size(updatedRecords)) {
+    /** Cập nhật last_update nếu có bản ghi mới */
+    if (size(updatedRecords)) {
       await db.meta.put({ key: 'last_update', value: Date.now() })
     }
 
