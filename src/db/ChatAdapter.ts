@@ -8,7 +8,7 @@ import { db } from './ChatDB'
 
 export class ChatAdapter {
   /** Trạng thái dùng biến local */
-  static use_local = false
+  static use_local = true
 
   static async fetchConversations(
     pageIds: string[],

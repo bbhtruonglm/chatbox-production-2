@@ -147,9 +147,9 @@ export interface ConversationInfo {
   id?: string
   /** Tên gợi nhớ */
   client_alias_name?: string
-
+  /** id của tin nhắn cuối cùng */
   last_message_id?: string
-
+  /** field thời gian cập nhật cuối cùng  */
   last_update?: number
 }
 
