@@ -104,27 +104,27 @@ const CREATE_TOOLTIP = (el: HTMLElement, binding: DirectiveBinding): void => {
     /**khoảng cách so với mục tiêu */
     const distance = 5
 
-    // di chuyển vị trí
+    /** di chuyển vị trí */
     nextTick(() => {
-      // bên phải
+      /** bên phải */
       if (tooltip_position === 'right') {
-        // căn giữa
+        /** căn giữa */
         TOOLTIP_BLOCK.style.top = `${
           target_y - block_height / 2 + target_height / 2
         }px`
         TOOLTIP_BLOCK.style.left = `${target_x + target_width + distance}px`
       }
-      // bên dưới
+      /** bên dưới */
       if (tooltip_position === 'bottom') {
-        // căn giữa
+        /** căn giữa */
         TOOLTIP_BLOCK.style.left = `${
           target_x + target_width / 2 - block_width / 2
         }px`
         TOOLTIP_BLOCK.style.top = `${target_y + target_height + distance}px`
       }
-      // bên trái
+      /** bên trái */
       if (tooltip_position === 'left') {
-        // căn chỉnh vị trí
+        /** căn chỉnh vị trí */
         TOOLTIP_BLOCK.style.top = `${
           target_y - block_height / 2 + target_height / 2
         }px`
@@ -132,9 +132,9 @@ const CREATE_TOOLTIP = (el: HTMLElement, binding: DirectiveBinding): void => {
           target_x - TOOLTIP_BLOCK.offsetWidth - distance
         }px`
       }
-      // bên trên
+      /** bên trên */
       if (tooltip_position === 'top') {
-        // căn giữa
+        /** căn giữa */
         TOOLTIP_BLOCK.style.left = `${
           target_x + target_width / 2 - block_width / 2
         }px`
@@ -144,31 +144,29 @@ const CREATE_TOOLTIP = (el: HTMLElement, binding: DirectiveBinding): void => {
       }
     })
 
-    // list id interval
-    let interval_id_list: ReturnType<typeof setInterval>[] = []
-
+    /** list id interval */
     interval_id_list.push(
       setInterval(() => {
-        // nếu target vẫn trên dom thì bỏ qua
+        /** nếu target vẫn trên dom thì bỏ qua */
         if (document.body.contains(el)) return
 
-        // nếu target đã mất thì loại bỏ toàn bộ tooltip này trên hệ thống
+        /** nếu target đã mất thì loại bỏ toàn bộ tooltip này trên hệ thống */
         Array.from(
           document.getElementsByClassName(`v-tooltip-${TOOLTIP_ID}`)
         ).forEach(element => element?.parentNode?.removeChild(element))
 
-        // dừng vòng lặp check
+        /** dừng vòng lặp check */
         clear_interval()
       }, 500)
     )
   })
 
-  // xử lý sự kiện khi di chuột ra ngoài mục tiêu
+  /** xử lý sự kiện khi di chuột ra ngoài mục tiêu */
   el.addEventListener('mouseleave', function () {
-    // dừng vòng lặp check
+    /** dừng vòng lặp check */
     clear_interval()
 
-    // xoá div khỏi body
+    /** xoá div khỏi body */
     try {
       document.body.removeChild(TOOLTIP_BLOCK)
     } catch (e) {}

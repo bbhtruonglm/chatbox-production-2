@@ -71,10 +71,7 @@ const $main = new Main()
 // tạo interval khi component được mount
 onMounted(() => {
   // lưu id của interval
-  interval_id.value = setInterval(
-    () => $main.refreshTime(),
-    1000 * 30
-  ) as unknown as number
+  interval_id.value = setInterval(() => $main.refreshTime(), 1000 * 30)
 })
 
 // xóa interval khi component bị unmount

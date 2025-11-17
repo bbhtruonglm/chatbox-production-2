@@ -133,7 +133,7 @@ function tooglePlay() {
   // chơi audio
   audio_element.value.play()
 
-  interval_id.value = window.setInterval(() => {
+  interval_id.value = setInterval(() => {
     if (audio_element.value.ended) {
       is_playing.value = false
       audio_element.value.currentTime = 0

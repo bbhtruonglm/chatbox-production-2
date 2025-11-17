@@ -445,7 +445,7 @@ watch(is_sending_verify_code, new_val => {
     })
     /** tạo interval, giảm từ 30 -> 0 */
     time_remaining.value = 30
-    countdown_interval = window.setInterval(() => {
+    countdown_interval = setInterval(() => {
       /** Nếu > 0 thì tiếp tục */
       if (time_remaining.value > 0) {
         /** giảm 1 giá trị */

@@ -145,6 +145,12 @@ export interface ConversationInfo {
   ai_description?: string
   /** id conversation */
   id?: string
+  /** Tên gợi nhớ */
+  client_alias_name?: string
+
+  last_message_id?: string
+
+  last_update?: number
 }
 
 /**dữ liệu khách hàng dạng obj để dễ update */

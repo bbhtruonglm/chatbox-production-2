@@ -231,7 +231,7 @@ class Main {
       ping_interval_id = setInterval(
         () => connection.value?.send('ping'),
         30_000
-      ) as unknown as number
+      )
     }
 
     // khi kết nối bị đóng

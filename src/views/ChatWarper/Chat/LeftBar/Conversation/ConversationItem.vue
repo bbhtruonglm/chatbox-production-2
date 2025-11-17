@@ -227,9 +227,8 @@ class Main {
 
     /** logic chọn hội thoại mới */
     selectConversation(CONVERSATION)
-    console.log(CONVERSATION, 'conversation')
+    /** Nếu có conversation id */
     if (CONVERSATION.id) {
-      // console.log('hahahahahhahaha', CONVERSATION.id)
       await db.conversations.update(CONVERSATION.id, {
         unread_message_amount: 0,
       })

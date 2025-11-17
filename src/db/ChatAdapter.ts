@@ -1,12 +1,14 @@
-import _, { keyBy, orderBy } from 'lodash'
+import type {
+  ConversationInfo,
+  FilterConversation,
+} from '@/service/interface/app/conversation'
+import { keyBy, orderBy } from 'lodash'
 
-import type { Conversation } from './ChatDB'
-import type { FilterConversation } from '@/service/interface/app/conversation'
 import { db } from './ChatDB'
 
 export class ChatAdapter {
   /** Trạng thái dùng biến local */
-  static useLocal = false
+  static use_local = false
 
   static async fetchConversations(
     pageIds: string[],
@@ -14,11 +16,14 @@ export class ChatAdapter {
     filter: FilterConversation,
     limit = 50,
     sort?: string,
-    after?: number[] // ✅ sửa kiểu từ string -> number[]
-  ): Promise<{ conversation: Record<string, Conversation>; after?: number[] }> {
+    after?: number[]
+  ): Promise<{
+    conversation: Record<string, ConversationInfo>
+    after?: number[]
+  }> {
     const { conversations: DB_CONVS } = await db.filter(
       filter,
-      after, // number[] tương thích
+      after,
       limit,
       pageIds
     )
@@ -28,7 +33,7 @@ export class ChatAdapter {
       DB_CONVS,
       [
         c => c.unread_message_amount || 0,
-        c => c.last_message_time || c.create_at || 0,
+        c => c.last_message_time || c.createdAt || 0,
       ],
       ['desc', 'desc']
     )
@@ -54,7 +59,7 @@ export class ChatAdapter {
   }
 
   /** Lưu Hàm xử lý Lưu zip data */
-  static async saveZipData(data: Record<string, Conversation>) {
+  static async saveZipData(data: Record<string, ConversationInfo>) {
     return db.saveMany(data)
   }
 }

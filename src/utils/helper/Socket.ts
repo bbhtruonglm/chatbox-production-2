@@ -12,7 +12,7 @@ export class Socket {
   private socket: WebSocket | null = null
 
   /**lưu lại id vòng lặp ping */
-  private ping_interval_id: ReturnType<typeof setInterval> | null = null
+  private ping_interval_id: number | null = null
 
   /**gắn cờ đóng kết nối hoàn toàn */
   private is_force_close_socket: boolean = false
