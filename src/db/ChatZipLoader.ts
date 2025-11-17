@@ -20,35 +20,41 @@ export async function loadZip(url: string) {
 
     const updatedRecords: Record<string, any> = {}
 
+    // --- Bulk get existing records để so sánh ---
+    const ids = list
+      .filter(c => c.fb_page_id && c.fb_client_id)
+      .map(c => `${c.fb_page_id}_${c.fb_client_id}`)
+
+    const existingList = await db.conversations.bulkGet(ids)
+    const existingMap = _.keyBy(existingList, 'id')
+
     for (const conv of list) {
       if (!conv.fb_page_id || !conv.fb_client_id) continue
-
-      /** Composite key */
       const id = `${conv.fb_page_id}_${conv.fb_client_id}`
+      const existing = existingMap[id]
 
-      /** Lấy bản ghi hiện tại trong DB */
-      const existing = await db.conversations.get(id)
+      const convTime = conv.last_message_time || conv.create_at || 0
+      const existingTime =
+        existing?.last_message_time || existing?.create_at || 0
 
-      /** Nếu chưa có hoặc last_message_time trong file mới hơn, lưu/update */
-      if (
-        !existing ||
-        (conv.last_message_time || 0) > (existing.last_message_time || 0)
-      ) {
+      if (!existing || convTime > existingTime) {
         updatedRecords[id] = { ...conv, id }
       }
     }
 
-    /** Bulk put các bản ghi cần cập nhật */
+    // --- Bulk save và cập nhật last_update theo last_message_time lớn nhất ---
     if (size(updatedRecords)) {
       await db.saveMany(updatedRecords)
+      const maxTime =
+        _.max(
+          Object.values(updatedRecords).map(
+            c => c.last_message_time || c.create_at || 0
+          )
+        ) || Date.now()
+      await db.meta.put({ key: 'last_update', value: maxTime })
       console.log(`✅ Updated ${size(updatedRecords)} records in IndexedDB`)
     } else {
       console.log('✅ No new updates, IndexedDB is up to date')
-    }
-
-    /** Cập nhật last_update nếu có bản ghi mới */
-    if (size(updatedRecords)) {
-      await db.meta.put({ key: 'last_update', value: Date.now() })
     }
 
     return list

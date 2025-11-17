@@ -198,7 +198,7 @@ async function continueMove() {
   try {
     // thêm trang các vào tổ chức
     await eachOfLimit(
-      $props.list_another_org_page_id,
+      $props.list_another_org_page_id ?? [],
       1,
       async (page_id, i) =>
         await add_os(selected_org_id.value!, page_id as string)

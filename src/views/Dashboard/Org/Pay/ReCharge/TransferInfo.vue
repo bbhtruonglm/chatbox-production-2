@@ -259,7 +259,7 @@ function checkTxnSuccess() {
     } catch (e) {
       clearInterval(check_txn_timeout_id.value)
     }
-  }, TIMER)
+  }, TIMER) as unknown as number
 }
 /**Tính toán thông tin chuyển khoản */
 function calcPaymentInfo(): IBankAccount {

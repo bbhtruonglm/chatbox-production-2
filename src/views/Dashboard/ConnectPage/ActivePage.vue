@@ -360,26 +360,23 @@ async function activePage() {
     commonStore.is_loading_full_screen = false
   }
 }
-/**tạo ra map của tổ chức đạng chọn với các trang của nó */
+/** Tạo map của tổ chức đang chọn với các trang của nó */
 async function getMapMyOs() {
-  /**danh sách các trang thuộc các tổ chức của tôi */
-  let list_my_os: OwnerShipInfo[] = []
+  /** danh sách các trang thuộc các tổ chức của tôi */
+  const list_my_os: OwnerShipInfo[] = []
 
-  // lấy toàn bộ các trang thuộc tổ chức của tôi
-  await eachOfLimit(orgStore.list_org, 1, async (org: OrgInfo, i) => {
-    // nếu không có id tổ chức thì bỏ qua
+  const listOrg = orgStore.list_org || [] // fallback nếu undefined
+
+  await eachOfLimit(listOrg, 1, async (org: OrgInfo, i) => {
     if (!org.org_id) return
-
-    /**các trang đã nằm trong tổ chức */
-    const LIST_OS = await read_os(org.org_id)
-
-    // thêm trang vào danh sách tổng
-    list_my_os = [...list_my_os, ...LIST_OS]
+    const LIST_OS = (await read_os(org.org_id)) || []
+    list_my_os.push(...LIST_OS)
   })
 
-  /**page_id và org_id */
+  /** tạo map page_id -> org_id */
   map_my_os.value = mapValues(keyBy(list_my_os, 'page_id'), 'org_id')
 }
+
 /**tính toán ra danh sách page mới và page không có quyền truy cập */
 async function getListPAGEPage() {
   try {
@@ -396,7 +393,7 @@ async function getListPAGEPage() {
 
     /**toàn bộ các trang của người dùng */
     list_current_page.value = await new N4SerivceAppPage().getListPage({
-      is_disable_filter: true
+      is_disable_filter: true,
     })
 
     /**danh sách các trang không phải trong tổ chức của tôi */
@@ -442,8 +439,8 @@ async function getListPAGEPage() {
           page?.page?.fb_page_id || ''
         ]
       )
-      temp_list_free_page.push(page)
-        // list_free_page.value.push(page)
+        temp_list_free_page.push(page)
+      // list_free_page.value.push(page)
       // nếu trang thuộc tổ chức khác
       else list_another_org_page.value.push(page)
     })

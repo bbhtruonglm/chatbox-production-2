@@ -15,6 +15,7 @@ export interface Conversation {
   label_id?: string[]
   is_spam_fb?: boolean
   last_message_time?: number
+  create_at?: number
   is_have_fb_inbox?: boolean
   is_have_fb_post?: boolean
   is_group?: boolean
@@ -44,7 +45,6 @@ class ChatDB extends Dexie {
     })
   }
 
-  /** Save nhiều conversation và update last_update */
   async saveMany(mapConvs: Record<string, Conversation>) {
     const list = _.map(mapConvs, c => {
       const id = `${c.fb_page_id}_${c.fb_client_id}`
@@ -53,24 +53,20 @@ class ChatDB extends Dexie {
     if (!list.length) return
     await this.conversations.bulkPut(list)
 
-    // Lưu giá trị last_update lớn nhất vào meta
     const maxUpdate = Math.max(...list.map(c => c.last_update || 0))
     await this.meta.put({ key: 'last_update', value: maxUpdate })
   }
 
-  /** Lấy last_update để incremental fetch */
   async getLastUpdate(): Promise<number> {
     const meta = await this.meta.get('last_update')
     return meta?.value || 0
   }
 
-  /** Cập nhật conversation từ tin nhắn mới */
   async updateFromMessage(detail: any) {
     const id = `${detail.fb_page_id}_${detail.fb_client_id}`
     const conv = await this.conversations.get(id)
     const lastMessageTime = detail.last_message_time || Date.now()
     if (!conv) {
-      // nếu chưa có conversation, tạo mới
       await this.conversations.put({
         id,
         fb_page_id: detail.fb_page_id,
@@ -99,19 +95,22 @@ class ChatDB extends Dexie {
     }
   }
 
-  /** Filter conversation giống trước đây */
+  /**
+   * Lọc và phân trang conversations
+   * - after: number[] dựa trên last_message_time
+   */
   async filter(
     filter: any,
-    after?: string,
+    after?: number[],
     limit: number = 50,
     pageIds?: string[]
-  ): Promise<{ conversations: Conversation[]; after?: string }> {
+  ): Promise<{ conversations: Conversation[]; after?: number[] }> {
     let collection = this.conversations.toCollection()
 
-    // 🔹 Lọc theo pageIds trước tiên để giới hạn dataset
     if (pageIds?.length) {
       collection = collection.filter(c => pageIds.includes(c.fb_page_id))
     }
+
     // --- filter cơ bản ---
     if (filter.unread_message === 'true')
       collection = collection.filter(c => (c.unread_message_amount || 0) > 0)
@@ -147,7 +146,7 @@ class ChatDB extends Dexie {
           collection = collection.filter((c: any) => c.is_group)
           break
         case 'FRIEND':
-          collection = collection.filter(c => !c.is_group)
+          collection = collection.filter((c: any) => !c.is_group)
           break
       }
     }
@@ -165,12 +164,13 @@ class ChatDB extends Dexie {
       collection = collection.filter((c: any) =>
         c.list_fb_post_id?.includes(filter.post_id)
       )
-    if (filter.staff_id?.length)
+    if (filter.staff_id?.length) {
       collection = collection.filter(
         c =>
           filter.staff_id.includes(c.fb_staff_id!) ||
           filter.staff_id.includes(c.user_id!)
       )
+    }
     if (filter.time_range?.gte || filter.time_range?.lte) {
       const { gte, lte } = filter.time_range
       collection = collection.filter(c => {
@@ -181,15 +181,19 @@ class ChatDB extends Dexie {
       })
     }
     if (filter.label_id?.length) {
-      if (filter.label_and)
-        collection = collection.filter(c =>
-          filter.label_id.every((id: any) => c.label_id?.includes(id))
-        )
-      else
-        collection = collection.filter(c =>
-          c.label_id?.some(id => filter?.label_id?.includes(id))
-        )
+      if (filter.label_and) {
+        collection = collection.filter(c => {
+          const labels = c.label_id ?? []
+          return filter.label_id.every((id: string) => labels.includes(id))
+        })
+      } else {
+        collection = collection.filter(c => {
+          const labels = c.label_id ?? []
+          return labels.some((id: string) => filter.label_id.includes(id))
+        })
+      }
     }
+
     if (filter.not_label_id?.length)
       collection = collection.filter(
         c => !c.label_id?.some(id => filter.not_label_id.includes(id))
@@ -211,22 +215,34 @@ class ChatDB extends Dexie {
     }
 
     // --- sort ---
-    const sorted = await collection.sortBy('unread_message_amount')
-    const final = _.orderBy(
-      sorted,
+    const allItems = await collection.toArray()
+    const withTime = allItems.filter(c => c.last_message_time != null)
+    const withoutTime = allItems.filter(c => c.last_message_time == null)
+
+    const sortedWithTime = _.orderBy(
+      withTime,
       ['unread_message_amount', 'last_message_time'],
       ['desc', 'desc']
     )
+    const sortedWithoutTime = _.orderBy(
+      withoutTime,
+      ['unread_message_amount'],
+      ['desc']
+    )
 
-    // --- handle after ---
+    const final = [...sortedWithTime, ...sortedWithoutTime]
+
+    // --- handle after (number[] based) ---
     let startIndex = 0
-    if (after) {
-      const idx = final.findIndex(c => c.id === after)
+    if (after?.length) {
+      const idx = final.findIndex(c => after.includes(c.last_message_time || 0))
       if (idx >= 0) startIndex = idx + 1
     }
 
     const slice = final.slice(startIndex, startIndex + limit)
-    const nextAfter = slice.length ? slice[slice.length - 1].id : undefined
+    const nextAfter = slice.length
+      ? slice.map(c => c.last_message_time || 0) // trả về number[]
+      : undefined
 
     return { conversations: slice, after: nextAfter }
   }

@@ -1,49 +1,12 @@
-// import type { Conversation } from './ChatDB'
-// import type { FilterConversation } from '@/service/interface/app/conversation'
-// import _ from 'lodash'
-// import { db } from './ChatDB'
-
-// export class ChatAdapter {
-//   static useLocal = true
-
-//   static async fetchConversations(
-//     pageIds: string[],
-//     orgId: string,
-//     filter: FilterConversation,
-//     limit = 50,
-//     sort?: string,
-//     after?: string
-//   ): Promise<{ conversation: Record<string, Conversation>; after?: string }> {
-//     if (ChatAdapter.useLocal) {
-//       const { conversations, after: nextCursor } = await db.filter(
-//         filter,
-//         after,
-//         limit
-//       )
-//       return { conversation: _.keyBy(conversations, 'id'), after: nextCursor }
-//     } else {
-//       const res = await fetch('/api/conversations', {
-//         method: 'POST',
-//         body: JSON.stringify({ pageIds, orgId, filter, limit, sort, after }),
-//       })
-//       const data = await res.json()
-//       await db.saveMany(data.conversation)
-//       return { conversation: data.conversation, after: data.after }
-//     }
-//   }
-
-//   static async saveZipData(data: Record<string, Conversation>) {
-//     return db.saveMany(data)
-//   }
-// }
+import _, { keyBy, orderBy } from 'lodash'
 
 import type { Conversation } from './ChatDB'
 import type { FilterConversation } from '@/service/interface/app/conversation'
-import _ from 'lodash'
 import { db } from './ChatDB'
 
 export class ChatAdapter {
-  static useLocal = true
+  /** Trạng thái dùng biến local */
+  static useLocal = false
 
   static async fetchConversations(
     pageIds: string[],
@@ -51,42 +14,46 @@ export class ChatAdapter {
     filter: FilterConversation,
     limit = 50,
     sort?: string,
-    after?: string
-  ): Promise<{ conversation: Record<string, Conversation>; after?: string }> {
-    if (ChatAdapter.useLocal) {
-      // 🔹 Lấy từ IndexedDB
-      const { conversations, after: nextCursor } = await db.filter(
-        filter,
-        after,
-        limit,
-        pageIds
-      )
-      console.log(pageIds)
-      // 🔹 Lọc theo danh sách pageIds
-      // const filtered = conversations.filter(c => pageIds.includes(c.fb_page_id))
-      // console.log(conversations, 'conversation')
-      // console.log(filtered, 'filtered')
-      return {
-        conversation: _.keyBy(conversations, 'id'),
-        after: nextCursor,
-      }
-    } else {
-      // 🔹 Nếu fetch từ server, thêm pageIds vào request
-      const res = await fetch('/api/conversations', {
-        method: 'POST',
-        body: JSON.stringify({ pageIds, orgId, filter, limit, sort, after }),
-      })
-      const data = await res.json()
+    after?: number[] // ✅ sửa kiểu từ string -> number[]
+  ): Promise<{ conversation: Record<string, Conversation>; after?: number[] }> {
+    const { conversations: DB_CONVS } = await db.filter(
+      filter,
+      after, // number[] tương thích
+      limit,
+      pageIds
+    )
 
-      // 🔹 Lưu cache cục bộ
-      await db.saveMany(data.conversation)
-      return {
-        conversation: data.conversation,
-        after: data.after,
-      }
+    /** sort với last_message_time || create_at */
+    let list = orderBy(
+      DB_CONVS,
+      [
+        c => c.unread_message_amount || 0,
+        c => c.last_message_time || c.create_at || 0,
+      ],
+      ['desc', 'desc']
+    )
+
+    /** handle pagination */
+    let start_index = 0
+    /** Nếu có giá trị after */
+    if (after?.length) {
+      /** Lấy list sau after */
+      const IDX = list.findIndex(c => after.includes(c.last_message_time || 0))
+      /** Nếu IDX > 0, tăng giá trị index */
+      if (IDX >= 0) start_index = IDX + 1
     }
+    /** Căt list từ index -> tới index + limit */
+    const SLICE = list.slice(start_index, start_index + limit)
+    /** Trả lại giá trị after để call lại lần sau - hoặc là undefined */
+    const NEXT_AFTER = SLICE.length
+      ? SLICE.map(c => c.last_message_time || 0) // ✅ number[] tương thích
+      : undefined
+
+    /** Trả về conversation và after */
+    return { conversation: keyBy(SLICE, 'id'), after: NEXT_AFTER }
   }
 
+  /** Lưu Hàm xử lý Lưu zip data */
   static async saveZipData(data: Record<string, Conversation>) {
     return db.saveMany(data)
   }

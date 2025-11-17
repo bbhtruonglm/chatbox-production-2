@@ -76,7 +76,7 @@ import {
   type ICalcSpecialPageConfigs,
 } from '@/utils/helper/Conversation/CalcSpecialPageConfigs'
 import { ChatAdapter } from '@/db/ChatAdapter'
-import type { Conversation } from '@/db/ChatDB'
+import { db, type Conversation } from '@/db/ChatDB'
 
 /**dữ liệu từ socket */
 interface CustomEvent extends Event {
@@ -366,38 +366,99 @@ class Main {
     }
 
     try {
-      let res: { conversation: Record<string, Conversation>; after?: string }
+      // after.value là number[]
+      let res: { conversation: Record<string, Conversation>; after?: number[] }
+
+      const afterForFetch: number[] | undefined = after.value?.length
+        ? [after.value[0]]
+        : undefined
 
       if (useLocal) {
+        const now = Date.now()
+
+        // 1️⃣ Lấy last_synced_at từ meta
+        const lastSyncMeta = await db.meta.get('last_synced_at')
+        const lastSyncedAt = lastSyncMeta?.value || 0
+
+        // 2️⃣ Lấy last_message_time lớn nhất trong DB
+        const lastConv = await db.conversations
+          .where('last_message_time')
+          .above(0)
+          .reverse()
+          .first()
+        const lastMessageTime = lastConv?.last_message_time || 0
+
+        // Chọn giá trị lớn nhất giữa lastSyncedAt và lastMessageTime
+        const lastTime = Math.max(lastSyncedAt, lastMessageTime)
+
+        // 3️⃣ Call API incremental từ lastTime -> now
+        try {
+          const incrementalRes = await this.API_CONVERSATION.readConversations(
+            PAGE_IDS,
+            orgStore.selected_org_id,
+            {
+              ...conversationStore.option_filter_page_data,
+              ...OVERWRITE_FILTER,
+              time_range: { gte: lastTime, lte: now },
+            },
+            100,
+            SORT
+          )
+
+          if (
+            incrementalRes?.conversation &&
+            Object.keys(incrementalRes.conversation).length
+          ) {
+            await db.saveMany(incrementalRes.conversation)
+            console.log(
+              `🔥 Synced ${
+                Object.keys(incrementalRes.conversation).length
+              } new conversations BEFORE rendering`
+            )
+          }
+        } catch (e) {
+          console.error(
+            'Failed to fetch incremental conversations from API:',
+            e
+          )
+        } finally {
+          await db.meta.put({ key: 'last_synced_at', value: now })
+        }
+
         res = await ChatAdapter.fetchConversations(
           PAGE_IDS,
           orgStore.selected_org_id,
-          { ...conversationStore.option_filter_page_data, ...OVERWRITE_FILTER },
+          {
+            ...conversationStore.option_filter_page_data,
+            ...OVERWRITE_FILTER,
+          },
           40,
           SORT,
-          after.value
+          afterForFetch
         )
       } else {
-        res = await this.API_CONVERSATION.readConversations(
+        let apiRes = await this.API_CONVERSATION.readConversations(
           PAGE_IDS,
           orgStore.selected_org_id,
           { ...conversationStore.option_filter_page_data, ...OVERWRITE_FILTER },
           40,
           SORT,
-          after.value
+          afterForFetch
         )
-        // lưu cache local để lần sau load nhanh
-        // await db.saveMany(res.conversation)
+
+        res = {
+          conversation: apiRes.conversation || {},
+          after: apiRes.after || [],
+        }
       }
 
       const CONVERSATIONS = res.conversation
 
       if (!size(CONVERSATIONS) || !res.after) is_done.value = true
-      after.value = res.after
+      after.value = res.after || [] // ✅ giữ nguyên kiểu number[]
 
       mapValues(CONVERSATIONS, (conversation, key) => {
         conversation.data_key = key
-        // loại bỏ các record page chat
         if (conversation.fb_page_id === conversation.fb_client_id)
           delete CONVERSATIONS[key]
       })

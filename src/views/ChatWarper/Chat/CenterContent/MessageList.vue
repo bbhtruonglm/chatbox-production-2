@@ -408,16 +408,53 @@ function isLastPageMessage(message: MessageInfo, index: number) {
 // }
 
 /** Cập nhật conversation trong IndexedDB theo fb_page_id + fb_client_id */
+// async function updateConversationInDB(detail: any) {
+//   try {
+//     if (!detail.fb_page_id || !detail.fb_client_id) return
+
+//     const convKey = `${detail.fb_page_id}_${detail.fb_client_id}`
+//     console.log(convKey, 'key')
+//     const conv = await db.conversations.get(convKey)
+//     console.log(conv, 'conversation')
+//     const lastMessageTime = detail.last_message_time || Date.now()
+//     console.log(lastMessageTime)
+//     if (!conv) {
+//       // nếu chưa có conversation thì tạo mới
+//       await db.conversations.put({
+//         id: convKey,
+//         fb_page_id: detail.fb_page_id,
+//         fb_client_id: detail.fb_client_id,
+//         last_message: detail.message_text,
+//         last_message_id: detail._id,
+//         last_message_type: detail.message_type,
+//         last_message_time: lastMessageTime,
+//         unread_message_amount: detail.message_type === 'client' ? 1 : 0,
+//       })
+//     } else if (lastMessageTime > (conv.last_message_time || 0)) {
+//       // nếu đã có, update nếu tin nhắn mới hơn
+//       const unread = conv.unread_message_amount || 0
+//       await db.conversations.update(convKey, {
+//         last_message: detail.message_text || conv.last_message,
+//         last_message_id: detail._id,
+//         last_message_type: detail.message_type,
+//         last_message_time: lastMessageTime,
+//         unread_message_amount:
+//           detail.message_type === 'client' ? unread + 1 : unread,
+//       })
+//     }
+//   } catch (e) {
+//     console.error('Failed to update conversation in IndexedDB', e)
+//   }
+// }
+/** Cập nhật conversation trong IndexedDB theo fb_page_id + fb_client_id */
 async function updateConversationInDB(detail: any) {
   try {
     if (!detail.fb_page_id || !detail.fb_client_id) return
 
     const convKey = `${detail.fb_page_id}_${detail.fb_client_id}`
-    console.log(convKey, 'key')
     const conv = await db.conversations.get(convKey)
-    console.log(conv, 'conversation')
     const lastMessageTime = detail.last_message_time || Date.now()
-    console.log(lastMessageTime)
+
     if (!conv) {
       // nếu chưa có conversation thì tạo mới
       await db.conversations.put({
@@ -430,17 +467,30 @@ async function updateConversationInDB(detail: any) {
         last_message_time: lastMessageTime,
         unread_message_amount: detail.message_type === 'client' ? 1 : 0,
       })
-    } else if (lastMessageTime > (conv.last_message_time || 0)) {
-      // nếu đã có, update nếu tin nhắn mới hơn
-      const unread = conv.unread_message_amount || 0
-      await db.conversations.update(convKey, {
-        last_message: detail.message_text || conv.last_message,
-        last_message_id: detail._id,
-        last_message_type: detail.message_type,
-        last_message_time: lastMessageTime,
-        unread_message_amount:
-          detail.message_type === 'client' ? unread + 1 : unread,
-      })
+    } else {
+      const updateData: Partial<typeof conv> = {}
+
+      // 🔹 Cập nhật các trường tin nhắn nếu có tin nhắn mới
+      if (lastMessageTime > (conv.last_message_time || 0)) {
+        updateData.last_message = detail.message_text || conv.last_message
+        updateData.last_message_id = detail._id
+        updateData.last_message_type = detail.message_type
+        updateData.last_message_time = lastMessageTime
+      }
+      console.log(updateData, 'updated data')
+
+      // 🔹 Luôn cập nhật unread_message_amount nếu là tin nhắn client
+      if (detail.message_type === 'client') {
+        const unread = conv.unread_message_amount || 0
+        updateData.unread_message_amount = unread + 1
+      } else {
+        updateData.unread_message_amount = 0
+      }
+
+      // 🔹 Nếu cần, có thể reset unread_message_amount từ socket khác hoặc hành động user
+      // updateData.unread_message_amount = detail.unread_message_amount_override ?? updateData.unread_message_amount
+
+      await db.conversations.update(convKey, updateData)
     }
   } catch (e) {
     console.error('Failed to update conversation in IndexedDB', e)
