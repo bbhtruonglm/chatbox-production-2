@@ -133,12 +133,21 @@ function tooglePlay() {
   // chơi audio
   audio_element.value.play()
 
+  // sau nửa giây sẽ cập nhật thời gian hiển thị
   interval_id.value = setInterval(() => {
+    // dừng khi hoàn tất đoạn nhạc
     if (audio_element.value.ended) {
+      // đổi cờ trạng thái thành dừng
       is_playing.value = false
+
+      // quay về thời gian 0
       audio_element.value.currentTime = 0
+
+      // xoá interval
       clearInterval(interval_id.value)
     }
+
+    // hiển thị thời gian hiện tại
     showCurrentTime()
   }, 500)
 }

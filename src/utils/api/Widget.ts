@@ -22,13 +22,18 @@ export class QuickAnswer extends Widget {
   }
 
   /**đọc dữ liệu trả lời nhanh */
-  async readAnswer(skip: number, limit: number): Promise<any[]> {
+  async readAnswer(
+    skip: number,
+    limit: number,
+    search?: string
+  ): Promise<any[]> {
     /**dữ liệu gốc */
     return await this.post('read_answer', {
       skip,
       limit,
       fb_page_id: this.#PAGE_ID,
       // sort: 'index ASC'
+      search,
     })
   }
 }

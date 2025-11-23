@@ -1135,7 +1135,7 @@ function uploadFileFromDevice() {
      * dùng `eachOfLimit` để xử lý bất đồng bộ có kiểm soát.
      */
     eachOfLimit(
-      Array.from(INPUT.files),
+      INPUT.files,
       1,
       (file: File, i, next) => {
         /** 🔹 Chuẩn hóa tên file để tránh lỗi ký tự đặc biệt */

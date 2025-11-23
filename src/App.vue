@@ -20,17 +20,17 @@
 import { useCommonStore } from '@/stores'
 
 import Loading from '@/components/Loading.vue'
-import { useKeyboardShortcut } from '@/views/composables/useKeyboardShortcut'
-import { container } from 'tsyringe'
-import { onMounted } from 'vue'
-import AdBlocker from './components/AdBlocker.vue'
 import Network from './components/Network.vue'
-import { loadZip } from './db/ChatZipLoader'
-import { setItem } from './service/helper/localStorage'
-import { N4SerivcePublicPartner } from './utils/api/N4Service/Partner'
-import { error } from './utils/decorator/Error'
+import AdBlocker from './components/AdBlocker.vue'
+import { onMounted } from 'vue'
 import { Toast } from './utils/helper/Alert/Toast'
+import { N4SerivcePublicPartner } from './utils/api/N4Service/Partner'
+import { setItem } from './service/helper/localStorage'
+import { error } from './utils/decorator/Error'
+import { container } from 'tsyringe'
 import { QueryString, type IQueryString } from './utils/helper/QueryString'
+import { useKeyboardShortcut } from '@/views/composables/useKeyboardShortcut'
+import { confirm } from './service/helper/alert'
 
 const commonStore = useCommonStore()
 const $toast = container.resolve(Toast)
@@ -126,18 +126,6 @@ class Main {
   }
 }
 const $main = new Main()
-
-onMounted(async () => {
-  try {
-    // chỉ lưu vào Dexie, không gán store
-    await loadZip(
-      'https://chatbox-backup.botbanhang.vn/backup/f48ef6f6bd05467b8b66b1602b27913f/org_id-f48ef6f6bd05467b8b66b1602b27913f-date-1762568491659-conversation.zip'
-    )
-    console.log('✅ Mock data loaded to IndexedDB')
-  } catch (e) {
-    console.error('Failed to load mock zip:', e)
-  }
-})
 
 // lấy token từ param nếu có
 $main.getParamToken()

@@ -143,14 +143,6 @@ export interface ConversationInfo {
   has_new_info_from_ext?: boolean
   /** Mô tả huấn luyện AI */
   ai_description?: string
-  /** id conversation */
-  id?: string
-  /** Tên gợi nhớ */
-  client_alias_name?: string
-  /** id của tin nhắn cuối cùng */
-  last_message_id?: string
-  /** field thời gian cập nhật cuối cùng  */
-  last_update?: number
 }
 
 /**dữ liệu khách hàng dạng obj để dễ update */
