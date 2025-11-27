@@ -141,8 +141,6 @@ export interface ConversationInfo {
   // * Các field custome thêm
   /** có thông tin khách mới từ extension gửi về */
   has_new_info_from_ext?: boolean
-  /** Mô tả huấn luyện AI */
-  ai_description?: string
 }
 
 /**dữ liệu khách hàng dạng obj để dễ update */
@@ -175,7 +173,7 @@ export interface QueryResetReadConversation extends QueryOneConversation {
 /**đầu vào của api đói assign nhân viên */
 export interface QuerySetAssignStaffConversation extends QueryOneConversation {
   /**id của nhân viên mới được assign */
-  new_staff_id: string
+  new_staff_id: string | undefined
   /**id của nhân viên cũ */
   old_staff_id?: string
 }
@@ -204,8 +202,6 @@ export interface QueryUpdateÌnoConversation extends QueryOneConversation {
   fb_info?: Record<string, any>
   /** giới tính */
   client_gender?: 'male' | 'female'
-  /** Mô tả cho AI */
-  ai_description?: string
 }
 
 export interface QueryPostMessage {

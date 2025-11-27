@@ -55,7 +55,11 @@
             "
             :tooltip-disabled="!is_admin"
             @click="$main.openAssignStaff"
-            :class="is_admin ? '' : 'cursor-not-allowed'"
+            :class="
+              is_admin || (!is_admin && is_staff_assigned)
+                ? ''
+                : 'cursor-not-allowed'
+            "
             class="text-xs text-slate-500 flex items-center gap-1 min-w-0"
           >
             <div
@@ -68,7 +72,7 @@
               {{ $t('v1.view.main.dashboard.chat.assign_staff.title') }}
             </div>
             <ArrowDownIcon
-              v-if="is_admin"
+              v-if="is_admin || (!is_admin && is_staff_assigned)"
               class="w-2.5 h-2.5 flex-shrink-0"
             />
           </button>
@@ -128,19 +132,15 @@
   </div>
   <Menu ref="client_menu_ref" />
   <ListPhone ref="phone_list_ref" />
-  <Member
-    ref="member_list_ref"
-    @add-member="openAddZaloModal"
-  />
+  <Member ref="member_list_ref" />
   <ChangeStaff ref="change_staff_ref" />
-  <ZaloAddMember ref="modal_zalo_add_member_ref" />
 </template>
 <script setup lang="ts">
 import {
+  useChatbotUserStore,
   useCommonStore,
   useConversationStore,
   useExtensionStore,
-  useMessageStore,
   useOrgStore,
 } from '@/stores'
 import { N4SerivceAppOneConversation } from '@/utils/api/N4Service/Conversation'
@@ -168,8 +168,6 @@ import { error } from '@/utils/decorator/Error'
 import { loading } from '@/utils/decorator/Loading'
 import { UsersIcon } from '@heroicons/vue/24/outline'
 import { PhoneIcon } from '@heroicons/vue/24/solid'
-import ZaloAddMember from './MessageList/MessageItem/PhoneAction/ZaloAddMember.vue'
-import { storeToRefs } from 'pinia'
 
 const $emit = defineEmits(['toggle_change_assign_staff'])
 
@@ -179,6 +177,8 @@ const conversationStore = useConversationStore()
 const extensionStore = useExtensionStore()
 const $clipboard = container.resolve(Clipboard)
 const $toast = container.resolve(Toast)
+/** Lấy thông tin user */
+const chatbotUserStore = useChatbotUserStore()
 
 /**ref của dropdown menu của khách hàng */
 const client_menu_ref = ref<InstanceType<typeof Menu>>()
@@ -192,15 +192,14 @@ const change_staff_ref = ref<InstanceType<typeof ChangeStaff>>()
 const is_loading_unread_conversation = ref(false)
 /** trạng thái của tài khoản hiện tại có phải là admin hay ko? */
 const is_admin = computed(() => conversationStore.isCurrentStaffAdmin())
-
-const { modal_zalo_add_member_ref } = storeToRefs(useMessageStore())
-
-const openAddZaloModal = () => {
-  console.log('modal add member to group')
-  // mở modal Add Zalo
-  // isAddZaloModalOpen.value = true
-  modal_zalo_add_member_ref?.value?.toggleModal()
-}
+/** Check trạng thái nhân viên hiện tại == user được assign */
+const is_staff_assigned = computed(() => {
+  return (
+    (conversationStore.getAssignStaff()?.fb_staff_id ||
+      conversationStore.getAssignStaff()?.user_id) ===
+    chatbotUserStore.getStaffId()
+  )
+})
 
 /** lắng nghe trạng thái của phím tắt */
 watch(
@@ -258,7 +257,7 @@ class Main {
   /**mở modal thay đổi assign nhân viên */
   openAssignStaff($event: MouseEvent) {
     /** Nếu tài khoản hiện tại không phải admin thì ko cho assign nhân viên */
-    if (!is_admin.value) return
+    if (!is_admin.value && !is_staff_assigned.value) return
 
     /** Mở modal */
     change_staff_ref.value?.toggle($event)

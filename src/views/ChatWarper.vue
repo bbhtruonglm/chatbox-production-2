@@ -89,7 +89,7 @@ import type { StaffSocket } from '@/service/interface/app/staff'
 import type { IAlert } from '@/utils/helper/Alert/type'
 import type { OwnerShipInfo } from '@/service/interface/app/billing'
 
-/** store */
+// store
 const pageStore = usePageStore()
 const chatbotUserStore = useChatbotUserStore()
 const conversationStore = useConversationStore()
@@ -235,7 +235,7 @@ function initExtensionLogic() {
       // nạp thông tin khách hàng
       if (r?.info) {
         // nếu có thông tin khách hàng thì bật cờ có thông tin mới lên
-        if (conversationStore.select_conversation) {
+        if(conversationStore.select_conversation) {
           conversationStore.select_conversation.has_new_info_from_ext = true
         }
 
@@ -674,7 +674,7 @@ class Main {
   }
 
   /**đánh dấu xem tổ chức này có page zalo không */
-  markOrgHaveZalo(oss: OwnerShipInfo[]) {
+  markOrgHaveZalo(oss: OwnerShipInfo[]){
     /**lọc ra các trang zalo cá nhân */
     pageStore.zlp_oss = oss.filter(
       os => os?.page_info?.type === 'ZALO_PERSONAL'
