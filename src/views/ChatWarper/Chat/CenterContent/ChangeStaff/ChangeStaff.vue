@@ -174,6 +174,11 @@ function assignConversationtoStaff(staff: StaffInfo | null) {
             },
             (e, r) => {
               if (e) return cb(e)
+              if (conversationStore.select_conversation) {
+                conversationStore.select_conversation.user_id = undefined
+                conversationStore.select_conversation.fb_staff_id = undefined
+              }
+              change_staff_dropdown_ref.value?.immediatelyHide()
               cb()
             }
           ),
