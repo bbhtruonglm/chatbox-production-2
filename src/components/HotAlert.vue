@@ -163,7 +163,7 @@ watch(
 
 /**lấy dữ liệu thiết lập */
 function getConfig(code?: string): ISetting {
-  // nếu không có code thì trả về mặc định
+  /** nếu không có code thì trả về mặc định */
   if (!code) return DEFAULT_SETTING
 
   // trả về thiết lập theo code
@@ -203,7 +203,7 @@ async function getAllNoti() {
     // lặp qua từng tổ chức để lấy danh sách các thông báo
     for (const org of LIST_ORG) {
       // nếu không có id tổ chức thì thôi qua tổ chức tiếp theo
-      if (!org.org_id) continue      
+      if (!org.org_id) continue
 
       /** dữ liệu api trả về */
       const RES = await get_noti(

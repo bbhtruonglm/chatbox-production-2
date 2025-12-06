@@ -174,15 +174,20 @@ function assignConversationtoStaff(staff: StaffInfo | null) {
             },
             (e, r) => {
               if (e) return cb(e)
+              /** Khi gỡ phân công thì reset lại user_id và fb_staff_id */
               if (conversationStore.select_conversation) {
+                /** Reset lại user_id và fb_staff_id */
                 conversationStore.select_conversation.user_id = undefined
+                /** Reset lại fb_staff_id */
                 conversationStore.select_conversation.fb_staff_id = undefined
               }
+              /** Ẩn dropdown */
               change_staff_dropdown_ref.value?.immediatelyHide()
               cb()
             }
           ),
         (cb: CbError) => {
+          /** Ẩn dropdown */
           change_staff_dropdown_ref.value?.immediatelyHide()
           cb()
         },

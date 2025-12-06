@@ -7,12 +7,12 @@ declare global {
     local_storage: {
       /**prefix cho tên của local */
       prefix: string
-    },
+    }
     /**cài đặt cho session */
     session_storage: {
       /**prefix cho tên của session */
-      prefix: 'chatbox_',
-    },
+      prefix: 'chatbox_'
+    }
     /**danh sách các domain của api */
     host: {
       n3_socket: string
@@ -46,6 +46,8 @@ declare global {
         /**liên hệ */
         contact: string
       }
+      /**proxy cho video zalo personal */
+      proxy_video: string
     }
     external_link: IExternalLink
     /**cài đặt cho riêng facebook */
@@ -73,6 +75,18 @@ declare global {
       app_id: string
       /**các quyền của IG */
       scope: string[]
+    }
+    /**cài đặt cho Tiktok */
+    tiktok: {
+      /**đường dẫn chuyển hướng */
+      redirect_uri: string
+      /**id ứng dụng riêng của IG */
+      app_id: string
+      /**các quyền của IG */
+      scope: string[]
+
+      /** get link api */
+      get_link_api: string
     }
     /**danh sách các nền tảng được kết nối với hệ thống chatobox */
     platform: IPageType[]

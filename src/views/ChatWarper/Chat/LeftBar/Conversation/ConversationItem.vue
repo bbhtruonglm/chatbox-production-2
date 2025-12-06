@@ -129,7 +129,7 @@ class Main {
       !$props.source?.data_key
     )
       return
-    // Đánh dấu đang chuyển hội thoại
+    /** Đánh dấu đang chuyển hội thoại */
     conversationStore.is_switching_conversation = true
     /**dữ liệu hội thoại */
     const CONVERSATION: IConversationItem = $props.source

@@ -132,8 +132,15 @@
   </div>
   <Menu ref="client_menu_ref" />
   <ListPhone ref="phone_list_ref" />
-  <Member ref="member_list_ref" />
+  <Member
+    ref="member_list_ref"
+    @add-member="openAddZaloModal"
+  />
   <ChangeStaff ref="change_staff_ref" />
+  <ZaloAddMember
+    ref="modal_zalo_add_member_ref"
+    @success="handleRefreshMember"
+  />
 </template>
 <script setup lang="ts">
 import {
@@ -141,6 +148,7 @@ import {
   useCommonStore,
   useConversationStore,
   useExtensionStore,
+  useMessageStore,
   useOrgStore,
 } from '@/stores'
 import { N4SerivceAppOneConversation } from '@/utils/api/N4Service/Conversation'
@@ -168,6 +176,8 @@ import { error } from '@/utils/decorator/Error'
 import { loading } from '@/utils/decorator/Loading'
 import { UsersIcon } from '@heroicons/vue/24/outline'
 import { PhoneIcon } from '@heroicons/vue/24/solid'
+import ZaloAddMember from './MessageList/MessageItem/PhoneAction/ZaloAddMember.vue'
+import { storeToRefs } from 'pinia'
 
 const $emit = defineEmits(['toggle_change_assign_staff'])
 
@@ -195,13 +205,28 @@ const is_admin = computed(() => conversationStore.isCurrentStaffAdmin())
 /** Check trạng thái nhân viên hiện tại == user được assign */
 const is_staff_assigned = computed(() => {
   return (
-    (conversationStore.getAssignStaff()?.fb_staff_id ||
-      conversationStore.getAssignStaff()?.user_id) ===
+    (conversationStore.getAssignStaff()?.user_id ||
+      conversationStore.getAssignStaff()?.fb_staff_id) ===
     chatbotUserStore.getStaffId()
   )
 })
 
-/** lắng nghe trạng thái của phím tắt */
+/** ref của modal add member */
+const { modal_zalo_add_member_ref } = storeToRefs(useMessageStore())
+
+/**
+ * Mở modal add member
+ */
+const openAddZaloModal = () => {
+  /**
+   * Mở modal add member
+   */
+  modal_zalo_add_member_ref?.value?.toggleModal()
+}
+
+/**
+ * Lắng nghe trạng thái của phím tắt
+ */
 watch(
   () => commonStore.keyboard_shortcut,
   value => {
@@ -307,6 +332,13 @@ function clickAvatar() {
   }
   /** mở modal xem thông tin người dùng */
   client_menu_ref.value?.openClientInfo()
+}
+
+/**
+ * Refresh danh sách thành viên
+ */
+function handleRefreshMember() {
+  member_list_ref.value?.refresh()
 }
 
 const $main = new Main()
