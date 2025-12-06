@@ -73,7 +73,11 @@
       {{ message?.reaction?.emoji }}
     </div> -->
     <Emotion
-      :position="message_type === 'client' ? 'RIGHT' : 'LEFT'"
+      :position="
+        message_type === 'page' || message.sender_id === message.fb_page_id
+          ? 'LEFT'
+          : 'RIGHT'
+      "
       :message
     />
     <SlowReply
@@ -121,9 +125,6 @@
           message_type === 'group') &&
         !message.is_undo
       "
-      :class="{
-        'right-0': message_type !== 'client',
-      }"
       :fb_page_id="message.fb_page_id"
       :sender_id="message.sender_id"
       :message="message"

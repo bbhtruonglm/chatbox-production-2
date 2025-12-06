@@ -142,6 +142,22 @@ const page_name = computed(() => {
   return ALIAS && ALIAS.trim() !== '' ? ALIAS : NAME || ''
 })
 
+/**
+ * Khi chuyển conversation:
+ * - Clear nội dung input để hiển thị lại placeholder
+ * - Reset trạng thái mention modal nếu đang mở
+ */
+watch(
+  () => conversationStore.select_conversation?.data_key,
+  () => {
+    $main.clearInputText()
+    /** Nếu mention modal đang mở thì tắt đi */
+    if (commonStore.is_show_mention) {
+      commonStore.is_show_mention = false
+    }
+  }
+)
+
 /**decorator xử lý khi phát sinh lỗi trả lời bình luận */
 const handleErrorReplyComment = error(
   container.resolve(ToastReplyComment),

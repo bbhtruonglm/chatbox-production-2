@@ -2,7 +2,7 @@
   <div
     id="chat__message-reaction"
     class="text-xxs text-slate-500 absolute group w-max z-20 -top-2.5 px-1"
-    :class="sender_id === fb_page_id ? '-left-[52px]' : '-right-[52px]'"
+    :class="position_class"
   >
     <!-- Trigger icon -->
     <!-- :class="[
@@ -50,7 +50,7 @@
 import type { MessageInfo } from '@/service/interface/app/message'
 import { N4SerivceAppMessage } from '@/utils/api/N4Service/Conversation'
 import { ThumbsUpIcon } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 /** Trạng thái mở popup reaction */
@@ -187,6 +187,21 @@ const $props = withDefaults(
   }>(),
   {}
 )
+
+/**
+ * Class vị trí của reaction trigger
+ * - Nếu là page (của mình) -> hiện bên trái (-left)
+ * - Nếu là client/group (người khác) -> hiện bên phải (-right)
+ */
+const position_class = computed(() => {
+  if (
+    $props.message?.message_type === 'page' ||
+    $props.sender_id === $props.fb_page_id
+  ) {
+    return '-left-[52px]'
+  }
+  return '-right-[52px]'
+})
 </script>
 
 <style scoped>

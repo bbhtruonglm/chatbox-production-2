@@ -142,7 +142,7 @@ function toggleModal(is_clear_input?: boolean) {
   if (!INPUT_CHAT) return
 
   /** xóa nội dung input nếu được yêu cầu */
-  if (is_clear_input && INPUT_CHAT.innerText === '@')
+  if (is_clear_input && INPUT_CHAT.innerText?.trim() === '@')
     $input_service.setInputText('')
 }
 
