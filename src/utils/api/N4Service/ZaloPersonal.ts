@@ -1,10 +1,9 @@
+import type { FacebookCommentPost } from '@/service/interface/app/post'
 import { N4Serivce } from '@/utils/api/N4Serivce'
 import { singleton } from 'tsyringe'
 
 /**Thông tin của một thành viên trong nhóm*/
 export interface IGroupMember {
-  /**id của thành viên*/
-  client_id?: string
   /**Tên của thành viên*/
   client_name?: string
   /**avatar của thành viên*/
@@ -20,13 +19,15 @@ export class N4SerivceAppZaloPersonal extends N4Serivce {
   }
 
   /**gửi lời mời kết bạn bằng id tin nhắn */
-  public async sendFriendRequestByMessage(data: {
-    page_id: string
-    actual_page_id: string
-    actual_client_id: string
-    message_id?: string
-    message?: string
-  }): Promise<{
+  public async sendFriendRequestByMessage(
+    data: {
+      page_id: string,
+      actual_page_id: string,
+      actual_client_id: string,
+      message_id?: string,
+      message?: string,
+    }
+  ): Promise<{
     /**đã kết bạn chưa */
     is_accept_friend_request?: boolean
   }> {
@@ -35,9 +36,9 @@ export class N4SerivceAppZaloPersonal extends N4Serivce {
 
   /** gửi lời mời kết bạn bằng sdt */
   public async sendFriendRequest(data: {
-    page_id: string
-    phone: string
-    message?: string
+    page_id:string,
+    phone:string,
+    message?:string
   }) {
     return this.post('send_friend_request', data)
   }

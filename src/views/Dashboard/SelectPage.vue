@@ -47,6 +47,8 @@
       <!-- <template v-if="orgStore.is_selected_all_org"> -->
       <AllOrg />
       <GroupPageAction />
+      <VipExpireToast />
+
       <!-- </template> -->
       <!-- <template v-else>
         <EmptyPage
@@ -114,6 +116,7 @@
           <GroupPageAction />
         </div>
       </template> -->
+      <!-- <template> -->
     </template>
   </DashboardLayout>
 </template>
@@ -134,9 +137,10 @@ import { KEY_GET_CHATBOT_USER_FUNCT } from '@/views/Dashboard/symbol'
 import { size } from 'lodash'
 import { storeToRefs } from 'pinia'
 import { container } from 'tsyringe'
-import { computed, inject, onMounted } from 'vue'
+import { computed, inject, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import VipExpireToast from './VipExpireToast.vue'
 
 import AlertAccountLimitReached from '@/components/AlertModal/AlertAccountLimitReached.vue'
 import HotAlert from '@/components/HotAlert.vue'
@@ -157,6 +161,8 @@ import InstagramIcon from '@/components/Icons/Instagram.vue'
 import WebIcon from '@/components/Icons/Web.vue'
 import ZaloIcon from '@/components/Icons/Zalo.vue'
 import { FlagIcon } from '@heroicons/vue/24/solid'
+import dayjs from 'dayjs'
+import type { OrgInfo } from '@/service/interface/app/billing'
 
 const { t: $t } = useI18n()
 const pageStore = usePageStore()
@@ -175,9 +181,9 @@ const { toggleModalConnectPage, getALlOrgAndPage } = usePageManager()
 /**hàm load lại thông tin chatbot user từ component cha */
 const getMeChatbotUser = inject(KEY_GET_CHATBOT_USER_FUNCT)
 
-// cắm bong bóng chat vào trang
+/** cắm bong bóng chat vào trang */
 useEmbedChat()
-
+/** tính toán menu hiện tại */
 computed(() => selectPageStore.current_menu)
 
 onMounted(async () => {
@@ -188,10 +194,10 @@ onMounted(async () => {
    */
   getMeChatbotUser?.()
 
-  // kích hoạt tự động mở kết nối nền tảng nếu cần
+  /** kích hoạt tự động mở kết nối nền tảng nếu cần */
   triggerConnectPlatform()
 
-  // lấy toàn bộ dữ liệu tổ chức và trang khi component được mount
+  /** lấy toàn bộ dữ liệu tổ chức và trang khi component được mount */
   await getALlOrgAndPage()
 
   handleLoginWithoutPage()
@@ -199,13 +205,13 @@ onMounted(async () => {
 
 /**kích hoạt tự động mở kết nối nền tảng nếu cần */
 function triggerConnectPlatform() {
-  // nếu không có cờ thì thôi
+  /** nếu không có cờ thì thôi */
   if (!$route.query.connect_page) return
 
   /** cờ kiểm tra mở kết nối */
   const CONNECT_PAGE = $route.query.connect_page?.toString() || ''
 
-  // mở modal connect zalo
+  /** mở modal connect zalo */
   toggleModalConnectPage?.(CONNECT_PAGE)
 }
 
@@ -214,19 +220,19 @@ function handleLoginWithoutPage() {
   /** Cờ đăng nhập lưu trong session storage */
   const IS_LOGIN = $session_storage.getItem('is_login')
 
-  // nếu đã đăng nhập thì thôi
+  /** nếu đã đăng nhập thì thôi */
   if (IS_LOGIN) return
 
-  // nếu không có page nào thì gửi tin nhắn trigger
+  /** nếu không có page nào thì gửi tin nhắn trigger */
   if (size(pageStore.all_page_list)) return
 
-  // gửi tin nhắn trigger
+  /** gửi tin nhắn trigger */
   $trigger_event_ref.sendMessageLoginWithoutPage({
     id: chatbotUserStore.chatbot_user?._id,
     name: chatbotUserStore.chatbot_user?.full_name,
   })
 
-  // cờ đăng nhập lưu trong session storage
+  /** cờ đăng nhập lưu trong session storage */
   $session_storage.setItem('is_login', true)
 }
 </script>

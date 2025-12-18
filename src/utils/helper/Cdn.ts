@@ -1,5 +1,4 @@
-import { clippingParents } from '@popperjs/core'
-import { singleton } from 'tsyringe'
+import { singleton } from "tsyringe"
 
 /**quản lý các đường dẫn của media */
 export interface ICdn {
@@ -24,12 +23,6 @@ export interface ICdn {
    * @param client_id id của client
    */
   fbClientAvt(page_id?: string, client_id?: string): string
-  /**
-   * đường dẫn ảnh đại diện của client
-   * @param page_id id của trang
-   * @param client_id id của client
-   */
-  tiktokClientAvt(page_id?: string, client_id?: string): string
   /**
    * đường dẫn ảnh đại diện của client
    * @param page_id id của trang
@@ -80,9 +73,6 @@ export class Cdn implements ICdn {
   }
   userAvt(user_id?: string) {
     return `${this.HOST}/media/s/${user_id}/user`
-  }
-  tiktokClientAvt(page_id?: string, client_id?: string) {
-    return `${this.HOST}/media/tiktok/${page_id}/client/${client_id}`
   }
   fbClientAvt(page_id?: string, client_id?: string) {
     return `${this.HOST}/media/fb/${page_id}/client/${client_id}`
