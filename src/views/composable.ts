@@ -1,22 +1,22 @@
-import { read_me_chatbot_user } from '@/service/api/chatbox/n4-service'
-import { getCurrentOrgInfo } from '@/service/function'
-import { toastError } from '@/service/helper/alert'
-import { flow } from '@/service/helper/async'
-import { handleFileLocal } from '@/service/helper/file'
-import { getItem } from '@/service/helper/localStorage'
 import { useChatbotUserStore, useMessageStore, useOrgStore } from '@/stores'
+
 import { BillingAppOrganization } from '@/utils/api/Billing'
+import type { CbError } from '@/service/interface/function'
+import { flow } from '@/service/helper/async'
+import { getCurrentOrgInfo } from '@/service/function'
+import { getItem } from '@/service/helper/localStorage'
+import { handleFileLocal } from '@/service/helper/file'
 import { map } from 'lodash'
 import { onMounted } from 'vue'
-
-import type { CbError } from '@/service/interface/function'
+import { read_me_chatbot_user } from '@/service/api/chatbox/n4-service'
+import { toastError } from '@/service/helper/alert'
 
 /** load các dữ liệu cần thiết của giao diện */
 export function initRequireData() {
   const chatbotUserStore = useChatbotUserStore()
   const orgStore = useOrgStore()
 
-  // init các dữ liệu cần thiết
+  /** init các dữ liệu cần thiết */
   onMounted(() => {
     getMeChatbotUser()
     getAllOrg()
@@ -52,16 +52,18 @@ export function initRequireData() {
   /**lấy danh sách các tổ chức của người dùng này */
   async function getAllOrg() {
     try {
-      // nếu chưa đăng nhập thì thôi
+      /* nếu chưa đăng nhập thì thôi */
       if (!getItem('access_token')) return
 
-      // lấy danh sách các tổ chức
+      /* lấy danh sách các tổ chức */
       orgStore.list_org = await new BillingAppOrganization().readOrg()
+
+      console.log(orgStore.list_org, 'lisst org')
 
       // tự động lấy thông tin tổ chức hiện tại
       getCurrentOrgInfo()
     } catch (e) {
-      // hiển thị thông báo lỗi
+      /* hiển thị thông báo lỗi */
       toastError(e)
     }
   }
@@ -85,6 +87,6 @@ export function useDropFile() {
     map($event.dataTransfer?.files, file => handleFileLocal(file))
   }
   return {
-    onDropFile
+    onDropFile,
   }
 }

@@ -76,7 +76,7 @@ onMounted(() => {
 
   // set chiều rộng tối thiểu cột bên trái
   // nếu độ rộng vượt quá giới hạn thì cài về tối thiểu
-  if(LOCAL_WIDTH < min.value || LOCAL_WIDTH > max.value) size.value = min.value
+  if (LOCAL_WIDTH < min.value || LOCAL_WIDTH > max.value) size.value = min.value
   // nếu không vượt quá giới hạn thì dùng từ local
   else size.value = LOCAL_WIDTH
 

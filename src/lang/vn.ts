@@ -1,6 +1,10 @@
 import type { Language } from '@/service/interface/language'
 
 const source: Language = {
+  'Thêm bởi:': 'Thêm bởi:',
+  'Tạo lúc': 'Tạo lúc',
+  'Nhập nội dung để huấn luyện AI tư vấn khách hàng':
+    'Nhập nội dung để huấn luyện AI tư vấn khách hàng',
   'Trợ lý AI đã tắt. Trợ lý AI sẽ tự động bật lại sau _ (lúc _)':
     'Trợ lý AI đã tắt. Trợ lý AI sẽ tự động bật lại sau {duration} (lúc {date})',
   'Trợ lý AI được tắt.': 'Trợ lý AI được tắt.',
@@ -21,6 +25,9 @@ const source: Language = {
   'Bước _': 'Bước {name}',
   "Gửi tin nhắn đến _. Sử dụng '/' để trả lời nhanh.":
     "Gửi tin nhắn đến {name}. Sử dụng '/' để trả lời nhanh.",
+  "Trả lời từ _. Sử dụng '/' để trả lời nhanh.":
+    "Trả lời từ {name}. Sử dụng '/' để trả lời nhanh.",
+
   'Bình luận dưới tên _': 'Bình luận dưới tên {name}',
   'Bình luận với vai trò _': 'Bình luận với vai trò {name}',
   'Đối với tài khoản _': 'Đối với tài khoản {name}',
@@ -96,31 +103,10 @@ const source: Language = {
   'Giới tính': 'Giới tính',
   'Không xác định': 'Không xác định',
   name: 'Tiếng Việt',
-
-  'Thông báo gói VIP': 'Thông báo gói VIP',
-  'Một số tổ chức của bạn sắp hoặc đã hết hạn gói':
-    'Một số tổ chức của bạn sắp hoặc đã hết hạn gói',
-  'Đã hết hạn:': 'Đã hết hạn:',
-  'hết hạn': 'hết hạn',
-  'Sắp hết hạn:': 'Sắp hết hạn:',
-  còn: 'còn',
-  'Còn _ ngày': 'Còn {duration} ngày',
-
-  ngày: 'ngày',
-  'Bỏ qua': 'Bỏ qua',
-  'Gia hạn ngay': 'Gia hạn ngay',
-  '...và còn': '...và còn',
-  'tổ chức khác': 'tổ chức khác',
-
-  'Thông báo quan trọng': 'Thông báo quan trọng',
-  'Xem các gói': 'Xem các gói',
-  'Gói của một số Tổ chức sắp hết hạn. Bạn nên gia hạn để tiếp tục sử dụng đầy đủ tính năng và không gián đoạn dịch vụ':
-    'Gói của một số Tổ chức sắp hết hạn. Bạn nên gia hạn để tiếp tục sử dụng đầy đủ tính năng và không gián đoạn dịch vụ',
-  'Đổi gói': 'Đổi gói',
-  'Ngày hết hạn': 'Ngày hết hạn',
-  'Gói hiện tại': 'Gói hiện tại',
-  'Không hiện lại bảng này': 'Không hiện lại bảng này',
-
+  'Kết nối với Tiktok': 'Kết nối với Tiktok',
+  'Kết nối với Tiktok để chat nhiều Trang tự động với AI, tối ưu chi phí Marketing với CAPI, tự động tích hợp các ứng dụng của Doanh nghiệp.':
+    'Kết nối với Tiktok để chat nhiều Trang tự động với AI, tối ưu chi phí Marketing với CAPI, tự động tích hợp các ứng dụng của Doanh nghiệp.',
+  'add _ member': 'Thêm {count} thành viên',
   v1: {
     common: {
       zalo: 'Zalo',
@@ -154,6 +140,21 @@ const source: Language = {
       select_all: 'Chọn tất cả',
       active: 'Kích hoạt',
       chatbox: 'Chatbox',
+
+      add_customer: 'Thêm khách hàng',
+      create_new_group: 'Tạo nhóm mới',
+      search_member: 'Tìm kiếm thành viên',
+      create_group: 'Tạo nhóm',
+      your_group_name: 'Tên nhóm của bạn',
+      create_zalo_group: 'Tạo nhóm Zalo',
+      member_selected: 'Đã chọn',
+      no_data: 'Không có thành viên',
+      list_member: 'Danh sách thành viên',
+      add_member: 'Thêm thành viên',
+      reset_select: 'Thiết lập lại',
+      remove_member: 'Xóa thành viên',
+      confirm_remove_member: 'Xác nhận xóa thành viên khỏi nhóm?',
+
       unsupport_message:
         'Nội dung tin nhắn này hiện tại chưa thể hiển thị được, vui lòng liên hệ với quản trị viên hệ thống',
       close: 'Đóng',
@@ -180,6 +181,25 @@ const source: Language = {
       copy: 'Sao chép',
       continue: 'Tiếp tục',
       warning: 'Cảnh báo',
+      share_message: 'Chuyển tiếp tin nhắn',
+      share_to: 'Chia sẻ tin nhắn',
+      sharing_content: 'Nội dung chia sẻ',
+      enter_sharing_content: 'Nhập nội dung chia sẻ',
+      attachments: 'File đính kèm',
+      copy_success: 'Đã sao chép',
+      hide: 'Ẩn',
+      show: 'Hiển thị',
+      reset: 'Tạo lại Mã bí mật',
+      token_org: 'Mã bí mật',
+      reset_token_confirm:
+        'Bạn có chắc chắn muốn thay đổi mã truy cập không. Điều này sẽ làm các api đang hoạt động bị dừng lại?',
+      create_new_token: 'Tạo mã bí mật mới',
+      tiktok: 'Tiktok',
+      add_member_success: 'Thêm thành viên thành công',
+      remove_member_success: 'Xóa thành viên thành công',
+      sending_message: 'Đang gửi tin nhắn...',
+      sent_success: 'Gửi thành công',
+      sent_failed: 'Gửi thất bại',
     },
     view: {
       network: {
@@ -442,6 +462,7 @@ const source: Language = {
             empty_page: 'Không tìm thấy trang của bạn?',
             add_page: 'Thêm kết nối',
             active_page: 'Kích hoạt trang',
+
             empty_invite: 'Không có trang cần kích hoạt',
             accept: 'Xác nhận lời mời',
             denied: 'Từ chối lời mời',
@@ -575,6 +596,7 @@ const source: Language = {
           chat: {
             has_send: '{name} đã nhắn tin: {message}',
             new_message_alert: 'Có tin nhắn mới',
+            reply_message: 'Trả lời tin nhắn',
             filter: {
               title: 'Lọc tin nhắn',
               interact: {
@@ -671,6 +693,7 @@ const source: Language = {
             action: {
               open_url: 'Đi đến liên kết',
               open_facebook: 'Trang cá nhân Facebook',
+              open_tiktok: 'Trang cá nhân Tiktok',
               open_inbox: 'Mở hộp thư Facebook',
               mark_unread: 'Đánh dấu tin nhắn là chưa đọc',
               block_user: 'Chặn người dùng',
@@ -751,6 +774,8 @@ const source: Language = {
                 place_order: 'Tạo đơn hàng',
                 create_transaction: 'Tạo giao dịch',
                 schedule_appointment: 'Lập lịch',
+                accept: 'Đồng ý',
+                decline: 'Từ chối',
               },
               widget: {
                 not_active: 'Không tìm thấy widget',
@@ -1182,6 +1207,7 @@ const source: Language = {
               pack_use: 'Gói đang sử dụng',
               pack_time: 'Thời gian sử dụng',
               page_amount: 'Số lượng trang',
+              last_reset: 'Làm mới gói gần nhất',
               staff_amount: 'Số lượng nhân sự',
               bot: 'Chatbot',
               chat_feature: 'Các tính năng chat',

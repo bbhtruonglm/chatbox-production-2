@@ -185,7 +185,12 @@
 <script setup lang="ts">
 import { getIframeUrl, getPageWidget } from '@/service/function'
 import { copy } from '@/service/helper/format'
-import { useConversationStore, useOrgStore, usePageStore, useWidgetStore } from '@/stores'
+import {
+  useConversationStore,
+  useOrgStore,
+  usePageStore,
+  useWidgetStore,
+} from '@/stores'
 import { LocalStorage } from '@/utils/helper/LocalStorage'
 import { sortBy } from 'lodash'
 import { container } from 'tsyringe'

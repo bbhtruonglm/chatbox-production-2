@@ -39,13 +39,18 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useCommonStore, useOrgStore } from '@/stores'
-import { get_noti, read_noti } from '@/service/api/chatbox/billing'
+import {
+  get_all_noti,
+  get_noti,
+  read_noti,
+} from '@/service/api/chatbox/billing'
 import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ToastSingleton } from '@/utils/helper/Alert/Toast'
 import { useRouter } from 'vue-router'
 
 import type { NotiInfo } from '@/service/interface/app/billing'
+import { isEmpty } from 'lodash'
 
 const $props = withDefaults(
   defineProps<{
@@ -150,12 +155,12 @@ const list_noti = ref<NotiInfo[]>([])
 const is_loading = ref(false)
 
 // đọc danh sách thông báo khi load component
-onMounted(getNoti)
+// onMounted(getNoti)
 
 watch(
   () => [
-    orgStore.selected_org_id,
-    orgStore.is_selected_all_org,
+    // orgStore.selected_org_id,
+    // orgStore.is_selected_all_org,
     orgStore.list_org,
   ],
   getNoti
@@ -163,10 +168,10 @@ watch(
 
 /**lấy dữ liệu thiết lập */
 function getConfig(code?: string): ISetting {
-  // nếu không có code thì trả về mặc định
+  /** nếu không có code thì trả về mặc định */
   if (!code) return DEFAULT_SETTING
 
-  // trả về thiết lập theo code
+  /** trả về thiết lập theo code */
   return SETTINGS?.[code] || DEFAULT_SETTING
 }
 /**lấy xx thông báo mới nhất */
@@ -174,14 +179,16 @@ async function getNoti() {
   try {
     // nếu không phải chọn tất cả các tổ chức thì chỉ lấy của tổ chức đang chọn
     // hoặc đang trong chat thì cũng chỉ lấy của tổ chức hiện tại
-    if (!orgStore.is_selected_all_org || $props.is_chat) {
-      list_noti.value = await getNotiCurrentOrg()
-    } else {
-      // lấy tất cả các thông báo
-      list_noti.value = await getAllNoti()
-    }
+    // if (!orgStore.is_selected_all_org || $props.is_chat) {
+    //   list_noti.value = await getNotiCurrentOrg()
+    // } else {
+    //   // lấy tất cả các thông báo
+    // }
 
-    // nếu trong chat thì sau 2s thì xóa thông báo
+    /** call noti theo list org (không tách từng tổ chức nữa) */
+    list_noti.value = await getAllNoti()
+
+    /** nếu trong chat thì sau 2s thì xóa thông báo */
     if (!$props.is_chat) return
     setTimeout(() => {
       list_noti.value = []
@@ -200,21 +207,33 @@ async function getAllNoti() {
     /** danh sách các tổ chức */
     const LIST_ORG = orgStore.list_org || []
 
+    /** Lấy list org id */
+    const ORG_IDS = LIST_ORG.map(item => item.org_id || '')
+    /** nếu không có org ids thì trả về [] */
+    if (isEmpty(ORG_IDS)) return []
     // lặp qua từng tổ chức để lấy danh sách các thông báo
-    for (const org of LIST_ORG) {
-      // nếu không có id tổ chức thì thôi qua tổ chức tiếp theo
-      if (!org.org_id) continue      
+    // for (const org of LIST_ORG) {
+    //   // nếu không có id tổ chức thì thôi qua tổ chức tiếp theo
+    //   if (!org.org_id) continue
 
-      /** dữ liệu api trả về */
-      const RES = await get_noti(
-        org.org_id,
-        3,
-        { $exists: false },
-        $props.codes
-      )
-      // thêm vào cuối danh sách
-      list_noti = [...list_noti, ...RES]
-    }
+    //   /** dữ liệu api trả về */
+    //   const RES = await get_noti(
+    //     org.org_id,
+    //     3,
+    //     { $exists: false },
+    //     $props.codes
+    //   )
+    //   // thêm vào cuối danh sách
+    //   list_noti = [...list_noti, ...RES]
+    // }
+    /** dữ liệu api trả về */
+    const RES = await get_all_noti({
+      org_id: ORG_IDS,
+      limit: 30,
+      is_read: { $exists: false },
+      noti_code: $props.codes,
+    })
+    list_noti = RES || []
   } catch (e) {
   } finally {
     return list_noti
@@ -226,10 +245,10 @@ async function getNotiCurrentOrg() {
   /** danh sách các thông báo */
   let list_noti: NotiInfo[] = []
   try {
-    // nếu không có id tổ chức thì thôi
+    /** nếu không có id tổ chức thì thôi */
     if (!orgStore.selected_org_id) return []
 
-    // ghi đè thống báo cũ nếu có khi lấy dữ liệu
+    /** ghi đè thống báo cũ nếu có khi lấy dữ liệu */
     list_noti = await get_noti(
       orgStore.selected_org_id,
       3,
@@ -237,7 +256,7 @@ async function getNotiCurrentOrg() {
       $props.codes
     )
   } catch (e) {
-    // tạm thời không xử lý gì
+    /** tạm thời không xử lý gì */
   } finally {
     return list_noti
   }
@@ -246,22 +265,21 @@ async function getNotiCurrentOrg() {
 /**đọc thông báo */
 async function readNoti(noti?: NotiInfo, is_close?: boolean) {
   try {
-    // nếu đang loading thì thôi
+    /** nếu đang loading thì thôi */
     if (commonStore.is_loading_full_screen) return
 
-    // mở loading
+    /** mở loading */
     commonStore.is_loading_full_screen = true
 
-    // đánh dấu noti là đã đọc
+    /** đánh dấu noti là đã đọc */
     await read_noti(orgStore.selected_org_id, noti?.noti_id)
 
-    // giảm số thông báo
+    /** giảm số thông báo */
     if (orgStore.count_noti) orgStore.count_noti--
 
-    // chỉ đóng không xử lý gì thêm
+    /** chỉ đóng không xử lý gì thêm */
     if (is_close) getNoti()
-    // xử lý tuỳ theo type noti
-    else
+    /** xử lý tuỳ theo type noti */ else
       switch (noti?.noti_code) {
         case 'CHANGE_PAGE_OWNER':
           $router.push('/dashboard/org/pay/info')
@@ -295,14 +313,14 @@ async function readNoti(noti?: NotiInfo, is_close?: boolean) {
           $router.push('/dashboard/org/pay/info')
           break
 
-        // code không cần xử lý gì thì tắt luôn
+        /** code không cần xử lý gì thì tắt luôn */
         default:
           await getNoti()
           break
       }
   } catch (e) {
   } finally {
-    // tắt loading
+    /** tắt loading */
     commonStore.is_loading_full_screen = false
   }
 }

@@ -23,33 +23,34 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from 'vue'
 import { composableService } from '@/views/ChatWarper/Chat/CenterContent/UserInfo/ChatbotStatus/service'
 
 import Toggle from '@/components/Toggle.vue'
-import ChooseTimeDisableAI from '@/views/ChatWarper/Chat/CenterContent/UserInfo/ChooseTimeDisableAI.vue';
+import ChooseTimeDisableAI from '@/views/ChatWarper/Chat/CenterContent/UserInfo/ChooseTimeDisableAI.vue'
 
 import { SparklesIcon } from '@heroicons/vue/24/solid'
 
 const { is_enable, ai_agent_working_hour_answer, getAiAgentStatus } =
   composableService()
 
-const choose_time_disable_modal_ref = ref<InstanceType<typeof ChooseTimeDisableAI>>()
+const choose_time_disable_modal_ref =
+  ref<InstanceType<typeof ChooseTimeDisableAI>>()
 
 class Main {
   toggleClientChatbot() {
     // nếu setting là không trả lời thì không cho thay đổi
-    if(ai_agent_working_hour_answer?.value?.type === 'NOT_ANSWER') return
+    if (ai_agent_working_hour_answer?.value?.type === 'NOT_ANSWER') return
 
     // nếu không tồn tại cờ bật/tắt chatbot thì thôi
-    if(is_enable === undefined) return
+    if (is_enable === undefined) return
 
     // nếu đang bật thì mở modal tắt
-    if(is_enable?.value) {
+    if (is_enable?.value) {
       choose_time_disable_modal_ref.value?.toggleModal()
       return
     }
-    
+
     // nếu đang tắt chatbot thì bật cờ
     is_enable.value = true
   }

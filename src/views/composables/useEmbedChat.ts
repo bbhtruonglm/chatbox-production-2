@@ -1,8 +1,9 @@
-import { useChatbotUserStore } from '@/stores'
-import { SingletonCdn } from '@/utils/helper/Cdn'
-import { Locale } from '@/utils/helper/Locale'
-import { container } from 'tsyringe'
 import { onMounted, onUnmounted } from 'vue'
+
+import { Locale } from '@/utils/helper/Locale'
+import { SingletonCdn } from '@/utils/helper/Cdn'
+import { container } from 'tsyringe'
+import { useChatbotUserStore } from '@/stores'
 
 export function useEmbedChat() {
   const chatbotUserStore = useChatbotUserStore()
@@ -97,11 +98,10 @@ export function useEmbedChat() {
   }
   const $main = new Main()
 
-  
   onMounted(() => {
     // tiêm sdk vào dom
     $main.injectSdk()
-    
+
     // sự kiện inject bong bóng chat
     window.addEventListener('message', $main.initEmbedChat)
 
