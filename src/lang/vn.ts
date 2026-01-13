@@ -1,10 +1,6 @@
 import type { Language } from '@/service/interface/language'
 
 const source: Language = {
-  'Thêm bởi:': 'Thêm bởi:',
-  'Tạo lúc': 'Tạo lúc',
-  'Nhập nội dung để huấn luyện AI tư vấn khách hàng':
-    'Nhập nội dung để huấn luyện AI tư vấn khách hàng',
   'Trợ lý AI đã tắt. Trợ lý AI sẽ tự động bật lại sau _ (lúc _)':
     'Trợ lý AI đã tắt. Trợ lý AI sẽ tự động bật lại sau {duration} (lúc {date})',
   'Trợ lý AI được tắt.': 'Trợ lý AI được tắt.',
@@ -107,6 +103,31 @@ const source: Language = {
   'Kết nối với Tiktok để chat nhiều Trang tự động với AI, tối ưu chi phí Marketing với CAPI, tự động tích hợp các ứng dụng của Doanh nghiệp.':
     'Kết nối với Tiktok để chat nhiều Trang tự động với AI, tối ưu chi phí Marketing với CAPI, tự động tích hợp các ứng dụng của Doanh nghiệp.',
   'add _ member': 'Thêm {count} thành viên',
+
+  'Thông báo gói VIP': 'Thông báo gói VIP',
+  'Một số tổ chức của bạn sắp hoặc đã hết hạn gói':
+    'Một số tổ chức của bạn sắp hoặc đã hết hạn gói',
+  'Đã hết hạn:': 'Đã hết hạn:',
+  'hết hạn': 'hết hạn',
+  'Sắp hết hạn:': 'Sắp hết hạn:',
+  còn: 'còn',
+  'Còn _ ngày': 'Còn {duration} ngày',
+
+  ngày: 'ngày',
+  'Bỏ qua': 'Bỏ qua',
+  'Gia hạn ngay': 'Gia hạn ngay',
+  '...và còn': '...và còn',
+  'tổ chức khác': 'tổ chức khác',
+
+  'Thông báo quan trọng': 'Thông báo quan trọng',
+  'Xem các gói': 'Xem các gói',
+  'Gói của một số Tổ chức sắp hết hạn. Bạn nên gia hạn để tiếp tục sử dụng đầy đủ tính năng và không gián đoạn dịch vụ':
+    'Gói của một số Tổ chức sắp hết hạn. Bạn nên gia hạn để tiếp tục sử dụng đầy đủ tính năng và không gián đoạn dịch vụ',
+  'Đổi gói': 'Đổi gói',
+  'Ngày hết hạn': 'Ngày hết hạn',
+  'Gói hiện tại': 'Gói hiện tại',
+  'Không hiện lại bảng này': 'Không hiện lại bảng này',
+
   v1: {
     common: {
       zalo: 'Zalo',
@@ -674,6 +695,8 @@ const source: Language = {
               findding_uid: 'Đang tìm kiếm UID',
             },
             error: {
+              page_deleted:
+                'Một số page có thể đã bị xóa khỏi Tổ chức của bạn, vui lòng quay lại màn chọn trang và lựa chọn lại',
               get_page_info: 'Không tìm thấy dữ liệu trang',
               get_org_info: 'Không tìm thấy dữ liệu tổ chức',
               org_quota_staff:

@@ -112,26 +112,19 @@ import type Mention from '@/views/ChatWarper/Chat/CenterContent/InputChat/MainIn
 const $props = defineProps<{
   /**ref của Mention component */
   mention_ref?: InstanceType<typeof Mention>
-  conversation?: any
 }>()
 
 /**id trang */
 const page_id = computed(
-  () =>
-    $props.conversation?.fb_page_id ||
-    conversationStore.select_conversation?.fb_page_id
+  () => conversationStore.select_conversation?.fb_page_id
 )
 /**id khách */
 const client_id = computed(
-  () =>
-    $props.conversation?.fb_client_id ||
-    conversationStore.select_conversation?.fb_client_id
+  () => conversationStore.select_conversation?.fb_client_id
 )
 /**loại nền tảng */
 const platform_type = computed(
-  () =>
-    $props.conversation?.platform_type ||
-    conversationStore.select_conversation?.platform_type
+  () => conversationStore.select_conversation?.platform_type
 )
 /** Render tên page */
 const page_name = computed(() => {
@@ -1009,7 +1002,7 @@ class Main {
           /** Nếu là gửi qua extension của FB */
           if (
             commonStore.extension_status === 'FOUND' &&
-            platform_type.value === 'FB_MESS'
+            conversationStore.select_conversation?.platform_type === 'FB_MESS'
           ) {
             IMAGE_LIST.forEach(image => {
               image.is_loading = false
@@ -1017,13 +1010,12 @@ class Main {
             })
 
             sendImageMessage(
-              platform_type.value,
+              conversationStore.select_conversation?.platform_type,
               page_id,
               client_id,
               pageStore?.selected_page_list_info?.[page_id]?.page
                 ?.fb_page_token,
-              $props.conversation?.client_bio?.fb_uid ||
-                conversationStore.select_conversation?.client_bio?.fb_uid,
+              conversationStore.select_conversation?.client_bio?.fb_uid,
               IMAGE_LIST.map(image => ({
                 url: image.url as string,
                 fb_image_id: image.fb_image_id,

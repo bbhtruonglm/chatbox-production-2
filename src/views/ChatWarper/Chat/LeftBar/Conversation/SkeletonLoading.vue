@@ -2,7 +2,7 @@
   <ul>
     <li
       v-for="index in 3"
-      class="flex items-center w-full group rounded-xl p-2 gap-3 animate-pulse"
+      class="flex items-center w-full group rounded-xl px-2 py-3 gap-3 animate-pulse h-[86px]"
     >
       <div class="relative flex-shrink-0">
         <div class="overflow-hidden bg-slate-200 rounded-oval w-10 h-10"></div>

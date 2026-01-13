@@ -13,9 +13,10 @@
     <a
       @click="$main.openCommentOnFb()"
       href="javascript:;"
-      class="text-xs"
+      class="text-xs flex items-center gap-1"
     >
       {{ $t('v1.view.main.dashboard.chat.post.open_on_facebook') }}
+      <ArrowTopRightOnSquareIcon class="size-3" />
     </a>
   </div>
   <div class="flex items-center gap-2">
@@ -67,11 +68,17 @@
       </small>
       <div
         v-else-if="is_show_btn_comment"
-        class="text-right"
+        class="text-right gap-2.5 flex items-center justify-end"
       >
         <button
+          @click="$main.filterByPost()"
+          class="text-xs text-blue-700 underline"
+        >
+          {{ $t('Lọc theo bài viết') }}
+        </button>
+        <button
           @click="$main.toggleModal()"
-          class="text-xs text-blue-700"
+          class="text-xs text-blue-700 underline"
         >
           {{ $t('Xem bài viết') }}
         </button>
@@ -103,6 +110,7 @@ import { renderTextV2 } from '@/service/function'
 import type { MessageInfo } from '@/service/interface/app/message'
 
 import { MarkedService } from '@/utils/helper/Markdown'
+import { ArrowTopRightOnSquareIcon } from '@heroicons/vue/16/solid'
 const { PostService } = composableService()
 
 /** Store hội thoại */
@@ -187,6 +195,16 @@ class Main {
   /** Mở bài viết và nhảy đến vị trí comment hiện tại trên Facebook */
   openCommentOnFb() {
     this.SERVICE_POST.openCommentOnFb(post_id.value, $props.message?.comment_id)
+  }
+
+  /** Lọc hội thoại theo bài viết */
+  filterByPost() {
+    if (!post_id.value) return
+
+    conversationStore.option_filter_page_data = {
+      ...conversationStore.option_filter_page_data,
+      post_id: post_id.value,
+    }
   }
 }
 

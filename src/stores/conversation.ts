@@ -123,6 +123,9 @@ export const useConversationStore = defineStore('conversation_store', () => {
     )
   }
 
+  /**đang load danh sách hội thoại */
+  const is_loading_list = ref(true)
+
   /**danh sách hội thoại đang hiển thị */
   const conversation_list = ref<ConversationList>({})
 
@@ -214,5 +217,6 @@ export const useConversationStore = defineStore('conversation_store', () => {
     selected_client_id,
     is_clearing_conversation,
     is_switching_conversation,
+    is_loading_list,
   }
 })

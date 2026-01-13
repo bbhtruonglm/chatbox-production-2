@@ -1,14 +1,6 @@
 <template>
-  <div
-    v-if="is_loading && !is_loading_first"
-    class="relative"
-  >
-    <div class="absolute left-1/2 -translate-x-1/2">
-      <Loading class="mx-auto" />
-    </div>
-  </div>
-  <SkeletonLoading v-if="is_loading_first" />
-  <template v-if="!is_loading_first">
+  <SkeletonLoading v-if="conversationStore.is_loading_list" />
+  <template v-if="!conversationStore.is_loading_list">
     <RecycleScroller
       @scroll="($event: UIEvent) => $main.loadMoreConversation($event)"
       v-if="size(conversationStore.conversation_list)"
@@ -16,9 +8,34 @@
       :items="map(conversationStore.conversation_list)"
       :item-size="86"
       key-field="data_key"
-      v-slot="{ item }"
     >
-      <ConversationItem :source="item" />
+      <template #default="{ item }">
+        <ConversationItem :source="item" />
+      </template>
+      <template #after>
+        <div
+          v-if="is_loading && !conversationStore.is_loading_list"
+          class="flex flex-col"
+        >
+          <div
+            v-for="i in 2"
+            :key="i"
+            class="flex items-center px-2 py-3 gap-3 h-[86px]"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-slate-200 animate-pulse flex-shrink-0"
+            ></div>
+            <div class="flex-1 flex flex-col gap-1 min-w-0">
+              <div
+                class="w-24 h-3 bg-slate-200 rounded-full animate-pulse"
+              ></div>
+              <div
+                class="w-44 h-2 bg-slate-200 rounded-full animate-pulse"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </template>
     </RecycleScroller>
     <div v-else>
       <img
@@ -97,8 +114,6 @@ const orgStore = useOrgStore()
 
 /**có đang load hội thoại hay không */
 const is_loading = ref(false)
-/** load danh sách hội thoại mới */
-const is_loading_first = ref(true)
 /**toàn bộ hội thoại đã được load hết chưa */
 const is_done = ref(false)
 /**phân trang kiểu after */
@@ -160,7 +175,7 @@ class Main {
   @error()
   async getConversation(is_first_time?: boolean, is_pick_first?: boolean) {
     /** lưu trạng thái có phải load lần đầu không */
-    is_loading_first.value = !!is_first_time
+    conversationStore.is_loading_list = !!is_first_time
 
     /** nếu đang mất mạng thì không cho gọi api */
     if (!commonStore.is_connected_internet) return
@@ -222,7 +237,7 @@ class Main {
       throw e
     } finally {
       /** tắt loading lần đầu */
-      is_loading_first.value = false
+      conversationStore.is_loading_list = false
     }
 
     /**dữ liệu hội thoại */
@@ -675,7 +690,8 @@ class Main {
       !padBehind ||
       padBehind > TARGET?.scrollHeight * (1 - PERCENT_SCROLL / 100) || // khi đạt mốc 70% scroll thì load thêm dữ liệu
       is_loading.value || // chỉ load thêm khi không có tiến trình khác đang load
-      is_done.value // nếu đã hết dữ liệu thì không load nữa
+      is_done.value || // nếu đã hết dữ liệu thì không load nữa
+      size(conversationStore.conversation_list) < 15 // nếu không đủ dữ liệu thì không load
     )
       return
 
@@ -697,6 +713,9 @@ const $main = new Main()
 
 /** khi component được render */
 onMounted(() => {
+  /** Khi khởi tạo thì set loading = true để tránh bị blink */
+  conversationStore.is_loading_list = true
+
   /** lắng nghe sự kiện socket */
   window.addEventListener(
     'chatbox_socket_conversation',

@@ -28,9 +28,13 @@ import { N4SerivceAppZaloPersonal } from '@/utils/api/N4Service/ZaloPersonal'
 import { container } from 'tsyringe'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { getItem } from '@/service/helper/localStorage'
+
 import Modal from '@/components/Modal.vue'
 
 import type { MessageInfo } from '@/service/interface/app/message'
+
+/** link gốc của chatbot */
+const DOMAIN_CHATBOT = getDomain()
 
 const $props = withDefaults(
   defineProps<{
@@ -47,9 +51,6 @@ const modal_widget_ref = ref<InstanceType<typeof Modal>>()
 
 /** màn hiển thị */
 const view = ref<'SEARCH' | 'CHAT' | 'FRIEND_REQUEST' | ''>('')
-
-/** link gốc của chatbot */
-const DOMAIN_CHATBOT = getDomain()
 
 /** ref tới iframe */
 const iframe_ref = ref<HTMLIFrameElement>()
@@ -144,9 +145,6 @@ class Main {
 
 const $main = new Main()
 
-// cung cấp hàm toggle modal cho component cha
-defineExpose({ toggleModal: $main.toggleModal.bind($main) })
-
 /** hàm xử lý sự kiện khi nhân được từ iframe zalo personal core */
 const handleMessage = $main.handleEvent.bind($main)
 
@@ -165,4 +163,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('message', handleMessage)
 })
+
+// cung cấp hàm toggle modal cho component cha
+defineExpose({ toggleModal: $main.toggleModal.bind($main) })
 </script>

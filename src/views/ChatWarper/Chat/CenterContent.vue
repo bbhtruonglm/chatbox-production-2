@@ -1,5 +1,7 @@
 <template>
+  <SkeletonLoading v-if="is_loading" />
   <div
+    v-else
     id="chat__center-content"
     class="h-full flex flex-col flex-grow min-w-0"
   >
@@ -35,9 +37,16 @@ import ZaloPersonalModal from '@/views/ChatWarper/Chat/CenterContent/MessageList
 import ZaloShareMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem/PhoneAction/ZaloShareMessage.vue'
 import StaffReadModal from '@/views/ChatWarper/Chat/CenterContent/StaffReadModal.vue'
 import UserInfo from '@/views/ChatWarper/Chat/CenterContent/UserInfo.vue'
+import SkeletonLoading from '@/views/ChatWarper/Chat/CenterContent/SkeletonLoading.vue'
 import { useRoute } from 'vue-router'
 import ZaloCreateGroup from './CenterContent/MessageList/MessageItem/PhoneAction/ZaloCreateGroup.vue'
+// props
+defineProps<{
+  /** có nên hiển thị skeleton loading ko */
+  is_loading?: boolean
+}>()
 
+/** state */
 const {
   modal_zalo_personal_ref,
   message_data,
@@ -45,5 +54,6 @@ const {
   modal_zalo_share_message_ref,
 } = storeToRefs(useMessageStore())
 
+/** router */
 const $route = useRoute()
 </script>

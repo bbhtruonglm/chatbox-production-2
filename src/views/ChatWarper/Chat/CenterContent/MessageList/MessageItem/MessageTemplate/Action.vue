@@ -124,6 +124,7 @@ function isAction(button: MessageTemplateButton) {
 }
 /**xử lý khi click vào nút bấm */
 async function onClickBtn(button?: MessageTemplateButton) {
+  console.log('onClickBtn', button)
   if (!button) return
 
   // nếu không phải hành động thì không làm gì cả
@@ -180,6 +181,8 @@ async function onClickBtn(button?: MessageTemplateButton) {
 
   // cta bbh
   if (TYPE?.includes('bbh_')) {
+    console.log('Handling BBH Action:', TYPE)
+
     /**map các cta */
     const MAP_CTA: Record<string, string> = {
       bbh_place_order: 'ai_cta_place_order',
@@ -199,16 +202,27 @@ async function onClickBtn(button?: MessageTemplateButton) {
       TYPE
     ] as keyof IPageAiCtaConfig
 
+    console.log('Mapped CTA Key:', CTA)
+
     // nếu không có cta thì không làm gì cả
-    if (!CTA) return
+    if (!CTA) {
+      console.warn('Cannot map BBH type to CTA key')
+      return
+    }
 
     /**thông tin cấu hình cta */
-    const CTA_CONFIG = getPageInfo(
+    const PAGE_INFO = getPageInfo(
       conversationStore.select_conversation?.fb_page_id
-    )?.[CTA]
+    )
+
+    // lấy cấu hình cta
+    const CTA_CONFIG = PAGE_INFO?.[CTA]
 
     // nếu không có cấu hình cta thì không làm gì cả
-    if (!CTA_CONFIG?.is_active || !CTA_CONFIG?.widget_id) return
+    if (!CTA_CONFIG?.is_active || !CTA_CONFIG?.widget_id) {
+      console.warn('CTA is not active or missing widget_id')
+      return
+    }
 
     /**dữ liệu của widget */
     const WIDGET = pageStore.market_widgets?.[CTA_CONFIG?.widget_id]
@@ -255,6 +269,7 @@ async function onClickBtn(button?: MessageTemplateButton) {
     }
 
     // mở modal
+    console.log('Opening Widget Modal')
     modal_widget_ref.value?.toggleModal()
   }
 }

@@ -14,17 +14,19 @@
     <Menu />
     <Layout>
       <template #left>
-        <LeftBar />
+        <LeftBar :is_loading="is_init_loading" />
       </template>
       <template #right>
         <div class="flex gap-2 h-full">
-          <CenterContent />
-          <RightBar />
+          <CenterContent :is_loading="should_show_skeleton" />
+          <RightBar :is_loading="should_show_skeleton" />
         </div>
       </template>
     </Layout>
 
-    <AlertRechQuota
+    <AlertWarning
+      :title="alert_state.title"
+      :description="alert_state.description"
       @close_modal="goDashboard"
       @confirm="goDashboard()"
       ref="ref_alert_reach_quota"
@@ -66,12 +68,12 @@ import { initRequireData, useDropFile } from '@/views/composable'
 import { debounce, difference, intersection, keys, map, size } from 'lodash'
 import { storeToRefs } from 'pinia'
 import { container } from 'tsyringe'
-import { onMounted, onUnmounted, ref, toRef, watch } from 'vue'
+import { onMounted, onUnmounted, ref, toRef, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import AlertAccountLimitReached from '@/components/AlertModal/AlertAccountLimitReached.vue'
-import AlertRechQuota from '@/components/AlertModal/AlertRechQuota.vue'
+
 import HotAlert from '@/components/HotAlert.vue'
 import CenterContent from '@/views/ChatWarper/Chat/CenterContent.vue'
 import LeftBar from '@/views/ChatWarper/Chat/LeftBar.vue'
@@ -88,8 +90,9 @@ import type { FacebookCommentPost } from '@/service/interface/app/post'
 import type { StaffSocket } from '@/service/interface/app/staff'
 import type { IAlert } from '@/utils/helper/Alert/type'
 import type { OwnerShipInfo } from '@/service/interface/app/billing'
+import AlertWarning from '@/components/AlertModal/AlertWarning.vue'
 
-// store
+/** store */
 const pageStore = usePageStore()
 const chatbotUserStore = useChatbotUserStore()
 const conversationStore = useConversationStore()
@@ -97,60 +100,93 @@ const commonStore = useCommonStore()
 const extensionStore = useExtensionStore()
 const orgStore = useOrgStore()
 
-const { ref_alert_reach_limit } = storeToRefs(commonStore)
-
-// utils
+/** utils */
 const { t: $t } = useI18n()
 const $router = useRouter()
 const $delay = container.resolve(Delay)
 const $socket = container.resolve(Socket)
 
-// composable
+/** composable */
 initRequireData()
 const { onDropFile } = useDropFile()
 
 /**cờ xác định người dùng có đang focus vào tab chat không */
 const is_focus_chat_tab = ref(true)
 /**ref modal cảnh báo hết gói */
-const ref_alert_reach_quota = ref<InstanceType<typeof AlertRechQuota>>()
+const ref_alert_reach_quota = ref<InstanceType<typeof AlertWarning>>()
+
+/**ref modal cảnh báo hết giới hạn gói */
+const ref_alert_reach_limit =
+  ref<InstanceType<typeof AlertAccountLimitReached>>()
+
+/** state nội dung modal */
+const alert_state = ref<{ title?: string; description?: string }>({})
+
+/** cờ đang khởi tạo dữ liệu */
+const is_init_loading = ref(true)
+
+/** Có nên hiển thị skeleton loading cho center va right bar ko */
+const should_show_skeleton = computed(() => {
+  return (
+    is_init_loading.value ||
+    conversationStore.is_loading_list ||
+    (size(conversationStore.conversation_list) > 0 &&
+      !conversationStore.select_conversation)
+  )
+})
 
 watch(
   () => conversationStore.select_conversation,
-  (new_val, old_val) => getTokenOfWidget(new_val, old_val),
+  (new_val, old_val) => getTokenOfWidget(new_val, old_val)
 )
 
 onMounted(() => {
-  checkOverLimit()
-
-  // $main.getPageInfoToChat()
+  /** lấy thông tin trang để chat */
   $main.getPageInfoToChat()
 
+  /** lấy danh sách trang của tổ chức hiện tại */
   $main.getPageOfCurrentOrg()
 
+  /** khởi tạo logic extension */
   initExtensionLogic()
 
+  /** kiểm tra quyền thông báo */
   checkAllowNoti()
 
-  // lắng nghe người dùng focus chat
+  /** lắng nghe sự kiện focus vào tab chat */
   window.addEventListener('focus', checkFocusChatTab)
+
+  /** lắng nghe sự kiện blur khỏi tab chat */
   window.addEventListener('blur', checkFocusChatTab)
+
+  /** sync ref global */
+  commonStore.ref_alert_reach_limit = ref_alert_reach_limit.value
 })
-// tiêu huỷ kết nối socket khi thoát khỏi component này
+
+/** gọi khi component bị hủy */
 onUnmounted(() => {
-  // đóng socket
+  /** destroy ref global */
+  commonStore.ref_alert_reach_limit = undefined
+
+  /** đóng socket */
   $socket.close()
 
-  // huỷ lắng nghe focus chat
+  /** hủy lắng nghe sự kiện focus */
   window.removeEventListener('focus', checkFocusChatTab)
+
+  /** hủy lắng nghe sự kiện blur */
   window.removeEventListener('blur', checkFocusChatTab)
 })
 
-/** hàm kiểm tra xem đã vượt giới hạn gói chưa */
-function checkOverLimit() {
-  if (orgStore.isOverLimit()) {
-    ref_alert_reach_limit.value?.toggleModal()
-  }
-}
+watch(
+  () => orgStore.isOverLimit(),
+  is_over => {
+    if (is_over) {
+      ref_alert_reach_limit.value?.openModal()
+    }
+  },
+  { immediate: true }
+)
 
 /**chuyển đến trang dashboard */
 function goDashboard() {
@@ -158,69 +194,70 @@ function goDashboard() {
 }
 /**kiểm tra xem người dùng có đang ở trong tab chatbox không */
 function checkFocusChatTab($event: FocusEvent) {
-  // nếu type của sự kiện là focus thì đánh dấu đang focus, ngược lại thì không
+  /** nếu type của sự kiện là focus thì đánh dấu đang focus, ngược lại thì không */
   is_focus_chat_tab.value = $event.type === 'focus'
 }
 /**gắn cờ nếu ext được kích hoạt + xử lý các logic */
 function initExtensionLogic() {
-  // đánh dấu đang tìm ext
+  /** đánh dấu đang tìm ext */
   commonStore.extension_status = 'FINDING'
 
   /**ping qua ext để check tồn tại */
-  // chờ 500ms để chắc chắn content script đã load
+  /** chờ 500ms để chắc chắn content script đã load */
   setTimeout(() => ext_ping(), 500)
 
-  // sau 3s mà không tìm thấy ext thì đánh dấu không tìm thấy
+  /** sau 3s mà không tìm thấy ext thì đánh dấu không tìm thấy */
   setTimeout(() => {
-    // nếu ext đã được tìm thấy rồi thì không cần check nữa
+    /** nếu ext đã được tìm thấy rồi thì không cần check nữa */
     if (commonStore.extension_status !== 'FINDING') return
 
-    // đánh dấu không tìm thấy ext
+    /** đánh dấu không tìm thấy ext */
     commonStore.extension_status = 'NOT_FOUND'
   }, 10000)
 
-  // lắng nghe ext gửi thông điệp
+  /** lắng nghe ext gửi thông điệp */
   ext_listen((event, e, r) => {
-    // đánh dấu đã phát hiện ext
+    /** đánh dấu đã phát hiện ext */
     if (event === 'EXTENSION_INSTALLED') {
-      // gắn cờ phát hiện ext
+      /** gắn cờ phát hiện ext */
       commonStore.extension_status = 'FOUND'
 
-      // gắn cờ force all tin nhắn qua ext
+      /** gắn cờ force all tin nhắn qua ext */
       if (r?.force_send_message_over_inbox)
         commonStore.force_send_message_over_inbox = true
 
-      // nếu hội thoại đang được chọn chưa có uid thì check
+      /** nếu hội thoại đang được chọn chưa có uid thì check */
       if (
         conversationStore.select_conversation?.fb_page_id &&
         (!conversationStore.select_conversation?.client_bio?.fb_uid ||
           !conversationStore.select_conversation?.client_bio?.fb_info)
       )
+        /** nếu hội thoại đang được chọn chưa có uid hoặc thông tin khách hàng thì check */
         getFbUserInfo(
           conversationStore.select_conversation?.platform_type,
           conversationStore.select_conversation?.fb_page_id,
           conversationStore.select_conversation?.fb_client_id,
           pageStore?.selected_page_list_info?.[
             conversationStore.select_conversation?.fb_page_id
-          ]?.page?.fb_page_token,
+          ]?.page?.fb_page_token
         )
     }
 
-    // nếu nhận được thông tin cá nhân của hội thoại thì update
+    /** nếu nhận được thông tin cá nhân của hội thoại thì update */
     if (event === 'GET_FB_USER_INFO' && r?.page_id && r?.client_id) {
       /**key để update hội thoại */
       const DATA_KEY = `${r?.page_id}_${r?.client_id}`
 
-      // nếu tìm thấy uid thì tắt cờ đang quét uid
+      /** nếu tìm thấy uid thì tắt cờ đang quét uid */
       if (r?.id) extensionStore.is_find_uid[DATA_KEY] = false
-      // nếu tìm thấy thông tin thì tắt cờ đang quét thông tin khách hàng
+      /** nếu tìm thấy thông tin thì tắt cờ đang quét thông tin khách hàng */
       if (r?.info) extensionStore.is_find_client_info[DATA_KEY] = false
 
-      // nếu không tìm thấy cả 2 dữ liệu thì tắt cờ và dừng
+      /** nếu không tìm thấy cả 2 dữ liệu thì tắt cờ và dừng */
       if (!r?.id && !r?.info) {
-        // tắt cờ đang quét uid
+        /** tắt cờ đang quét uid */
         extensionStore.is_find_uid[DATA_KEY] = false
-        // tắt cờ đang quét thông tin khách hàng
+        /** tắt cờ đang quét thông tin khách hàng */
         extensionStore.is_find_client_info[DATA_KEY] = false
 
         return
@@ -230,12 +267,12 @@ function initExtensionLogic() {
       const CLIENT_BIO: ConversationInfo['client_bio'] =
         conversationStore.conversation_list?.[DATA_KEY]?.client_bio || {}
 
-      // nạp UID
+      /** nạp UID */
       if (r?.id) CLIENT_BIO.fb_uid = r?.id
 
-      // nạp thông tin khách hàng
+      /** nạp thông tin khách hàng */
       if (r?.info) {
-        // nếu có thông tin khách hàng thì bật cờ có thông tin mới lên
+        /** nếu có thông tin khách hàng thì bật cờ có thông tin mới lên */
         if (conversationStore.select_conversation) {
           conversationStore.select_conversation.has_new_info_from_ext = true
         }
@@ -243,18 +280,18 @@ function initExtensionLogic() {
         CLIENT_BIO.fb_info = r?.info
       }
 
-      // ghi dữ liệu vào mảng
+      /** ghi dữ liệu vào mảng */
       if (conversationStore.conversation_list?.[DATA_KEY])
         conversationStore.conversation_list[DATA_KEY].client_bio = CLIENT_BIO
 
-      // ghi dữ liệu vào user hiện tại đang chọn
+      /** ghi dữ liệu vào user hiện tại đang chọn */
       if (
         conversationStore.select_conversation &&
         conversationStore.select_conversation?.fb_client_id === r?.client_id
       )
         conversationStore.select_conversation.client_bio = CLIENT_BIO
 
-      // cập nhật data lên server
+      /** cập nhật data lên server */
       update_info_conversation(
         {
           page_id: r?.page_id,
@@ -262,7 +299,7 @@ function initExtensionLogic() {
           fb_uid: r?.id,
           fb_info: r?.info,
         },
-        (e, r) => {},
+        (e, r) => {}
       )
     }
   })
@@ -270,7 +307,7 @@ function initExtensionLogic() {
 /**khởi tạo token cho widget */
 function getTokenOfWidget(
   new_val?: ConversationInfo,
-  old_val?: ConversationInfo,
+  old_val?: ConversationInfo
 ) {
   /**id trang hiện tại được chọn */
   const PAGE_ID = new_val?.fb_page_id
@@ -281,17 +318,19 @@ function getTokenOfWidget(
 
   /**danh sách id widget */
   let list_app_installed_id: {
-    // app_installed_id: app_id
+    /** app_installed_id: app_id */
     [index: string]: string
   } = {}
 
-  // khởi tạo dữ liệu
+  /** khởi tạo dữ liệu */
   getPageWidget(PAGE_ID)
+    /** chỉ lấy widget có active_widget */
     // ?.filter(widget => widget.active_widget)
     ?.map(widget => {
       list_app_installed_id[widget._id || ''] = widget.app_id || ''
     })
 
+  /** tạo token */
   create_token_app_installed(
     {
       page_id: PAGE_ID,
@@ -299,12 +338,12 @@ function getTokenOfWidget(
       payload: {
         fb_client_id: conversationStore.select_conversation?.fb_client_id,
         page_name: getPageInfo(
-          conversationStore.select_conversation?.fb_page_id,
+          conversationStore.select_conversation?.fb_page_id
         )?.name,
         label_data: map(
-          pageStore.selected_page_list_info?.[PAGE_ID]?.label_list,
+          pageStore.selected_page_list_info?.[PAGE_ID]?.label_list
         )?.filter(label =>
-          conversationStore.select_conversation?.label_id?.includes(label?._id),
+          conversationStore.select_conversation?.label_id?.includes(label?._id)
         ),
         current_staff_id: chatbotUserStore.chatbot_user?.fb_staff_id,
         current_staff_name: chatbotUserStore.chatbot_user?.full_name,
@@ -314,18 +353,18 @@ function getTokenOfWidget(
     (e, r: any) => {
       if (e) return
 
-      // nhập dữ liệu token mới
+      /** nhập dữ liệu token mới */
       conversationStore.list_widget_token = {
         new_page_id: PAGE_ID,
         old_page_id: OLD_PAGE_ID,
         data: r,
       }
-    },
+    }
   )
 }
 /**giảm tải việc làm mới thời gian liên tục */
 const debounceRefreshConversationTime = debounce(() => {
-  // thông báo cho component cập nhật lại thời gian
+  /** thông báo cho component cập nhật lại thời gian */
   window.dispatchEvent(new CustomEvent('chatbox_conversation_refresh_time'))
 }, 1000 * 5)
 
@@ -347,7 +386,7 @@ function handleSocketEvent(socket_data: {
   let { conversation, message, update_message, update_comment, event } =
     socket_data
 
-  // gửi thông điệp đến component xử lý danh sách hội thoại
+  /** gửi thông điệp đến component xử lý danh sách hội thoại */
   if (validateConversation(conversation, message))
     window.dispatchEvent(
       new CustomEvent('chatbox_socket_conversation', {
@@ -355,58 +394,58 @@ function handleSocketEvent(socket_data: {
           conversation,
           event,
         },
-      }),
+      })
     )
 
-  // gửi thông điệp đến component xử lý hiển thị danh sách tin nhắn
+  /** gửi thông điệp đến component xử lý hiển thị danh sách tin nhắn */
   if (size(message)) {
-    // socket tin nhắn mới cho các component
+    /** socket tin nhắn mới cho các component */
     window.dispatchEvent(
-      new CustomEvent('chatbox_socket_message', { detail: message }),
+      new CustomEvent('chatbox_socket_message', { detail: message })
     )
 
-    // render lại thời gian của hội thoại
+    /** render lại thời gian của hội thoại */
     debounceRefreshConversationTime()
   }
 
-  // gửi thông điệp cập nhật tin nhắn đã có
+  /** gửi thông điệp cập nhật tin nhắn đã có */
   if (size(update_message))
     window.dispatchEvent(
       new CustomEvent('chatbox_socket_update_message', {
         detail: update_message,
-      }),
+      })
     )
 
-  // gửi thông điệp cập nhật comment
+  /** gửi thông điệp cập nhật comment */
   if (size(update_comment))
     window.dispatchEvent(
       new CustomEvent('chatbox_socket_update_comment', {
         detail: update_comment,
-      }),
+      })
     )
 
-  // thông báo cho người dùng nếu là tin nhắn của khách hàng gửi cho page
+  /** thông báo cho người dùng nếu là tin nhắn của khách hàng gửi cho page */
   if (message?.message_type === 'client') triggerAlert(conversation)
 }
 
 /**gửi thông báo cho nhân viên hiện tại */
 function triggerAlert(conversation?: ConversationInfo) {
-  // nếu người dùng đang focus vào tab chat thì không cần thông báo
+  /** nếu người dùng đang focus vào tab chat thì không cần thông báo */
   if (is_focus_chat_tab.value) return
 
-  // phát nhạc thông báo
+  /** phát nhạc thông báo */
   ringBell()
 
-  // bắn web noti
+  /** bắn web noti */
   pushWebNoti(conversation)
 }
 /**gửi thông báo bằng web noti - không chạy trên mac */
 async function pushWebNoti(conversation?: ConversationInfo) {
-  // dừng nếu không đủ điều kiện thực thi
+  /** dừng nếu không đủ điều kiện thực thi */
   if (
-    // nếu trình duyệt không hỗ trợ
+    /** nếu trình duyệt không hỗ trợ */
     !('Notification' in window) ||
-    // nếu người dùng không cấp quyền
+    /** nếu người dùng không cấp quyền */
     Notification.permission !== 'granted'
   )
     return
@@ -425,10 +464,10 @@ async function pushWebNoti(conversation?: ConversationInfo) {
   /**tạo đối tượng thông báo noti + thực hiện noti */
   const NOTI = new Notification(TITLE, { body: MESSAGE_ALERT, icon: AVATAR })
 
-  // chờ 5 giây
+  /** chờ 5 giây */
   await new Promise(resolve => setTimeout(resolve, 5000))
 
-  // tắt noti
+  /** tắt noti */
   NOTI.close()
 }
 /**phát nhạc thông báo */
@@ -439,20 +478,20 @@ function ringBell() {
 }
 /**kiểm tra xem người dùng có cấp quyền cho phép thông báo không */
 function checkAllowNoti() {
-  // * lưu ý web noti chỉ chạy trên window, mac không chạy
+  /** lưu ý web noti chỉ chạy trên window, mac không chạy */
 
-  // nếu trình duyệt không hỗ trợ thì thôi
+  /** nếu trình duyệt không hỗ trợ thì thôi */
   if (!('Notification' in window)) return
 
-  // nếu người dùng từ chối cấp quyền rồi thì thôi
+  /** nếu người dùng từ chối cấp quyền rồi thì thôi */
   if (Notification.permission === 'denied') return
 
-  // hỏi xin quyền từ người dùng
+  /** hỏi xin quyền từ người dùng */
   Notification.requestPermission(permission => {
-    // nếu trình duyệt đã hỗ trợ quyền này thì dừng
+    /** nếu trình duyệt đã hỗ trợ quyền này thì dừng */
     if ('permission' in Notification) return
 
-    // nếu trình duyệt không hỗ trợ thì dùng thủ thuật để lưu lại quyền
+    /** nếu trình duyệt không hỗ trợ thì dùng thủ thuật để lưu lại quyền */
     // @ts-ignore
     Notification.permission = permission
   })
@@ -460,72 +499,72 @@ function checkAllowNoti() {
 /**kiểm tra hội thoại có thoả mãn diều kiện lọc để được xuất hiện không */
 function validateConversation(
   conversation?: ConversationInfo,
-  message?: MessageInfo,
+  message?: MessageInfo
 ) {
-  // nêu không có dữ liệu hội thoại thì chặn
+  /** nêu không có dữ liệu hội thoại thì chặn */
   if (!conversation || !size(conversation)) return
 
-  // đang lọc inbox thì không cho post qua
+  /** đang lọc inbox thì không cho post qua */
   if (
     conversationStore.option_filter_page_data.display_style === 'INBOX' &&
     message?.platform_type === 'FB_POST'
   )
     return
 
-  // đang lọc post thì không cho inbox qua
+  /** đang lọc post thì không cho inbox qua */
   if (
     conversationStore.option_filter_page_data.display_style === 'COMMENT' &&
     message?.platform_type === 'FB_MESS'
   )
     return
 
-  // đang lọc bạn bè
+  /** đang lọc bạn bè */
   if (
     conversationStore.option_filter_page_data.display_style === 'FRIEND' &&
     conversation?.is_group
   )
     return
 
-  // đang lọc nhóm
+  /** đang lọc nhóm */
   if (
     conversationStore.option_filter_page_data.display_style === 'GROUP' &&
     !conversation?.is_group
   )
     return
 
-  // lọc theo search: tên, sdt, email
+  /** lọc theo search: tên, sdt, email */
   if (
     conversationStore.option_filter_page_data.search &&
     (!conversation.client_name ||
       !new RegExp(conversationStore.option_filter_page_data.search, 'i').test(
-        conversation.client_name,
+        conversation.client_name
       )) &&
     (!conversation.client_phone ||
       !new RegExp(conversationStore.option_filter_page_data.search, 'i').test(
-        conversation.client_phone,
+        conversation.client_phone
       )) &&
     (!conversation.client_email ||
       !new RegExp(conversationStore.option_filter_page_data.search, 'i').test(
-        conversation.client_email,
+        conversation.client_email
       ))
   )
     return
 
-  // lọc có sdt
+  /** lọc có sdt */
   if (
     conversationStore.option_filter_page_data.have_phone === 'YES' &&
     !conversation.client_phone
   )
     return
 
-  // lọc không có sdt
+  /** lọc không có sdt */
   if (
     conversationStore.option_filter_page_data.have_phone === 'NO' &&
     conversation.client_phone
   )
     return
 
-  // lọc theo thời gian
+  /** lọc theo thời gian */
   if (
     !conversation.last_message_time ||
     (conversationStore.option_filter_page_data.time_range?.lte &&
@@ -537,28 +576,28 @@ function validateConversation(
   )
     return
 
-  // lọc theo nhân viên
+  /** lọc theo nhân viên */
   if (
     conversationStore.option_filter_page_data.staff_id &&
     (!conversation.fb_staff_id ||
       !conversationStore.option_filter_page_data.staff_id.includes(
-        conversation.fb_staff_id,
+        conversation.fb_staff_id
       ))
   )
     return
 
-  // lọc nhãn hoặc
+  /** lọc nhãn hoặc */
   if (
     conversationStore.option_filter_page_data.label_id &&
     !conversationStore.option_filter_page_data.label_and &&
     !intersection(
       conversationStore.option_filter_page_data.label_id,
-      conversation.label_id,
+      conversation.label_id
     ).length
   )
     return
 
-  // lọc nhãn và
+  /** lọc nhãn và */
   if (
     conversationStore.option_filter_page_data.label_id &&
     conversationStore.option_filter_page_data.label_and &&
@@ -566,29 +605,29 @@ function validateConversation(
       !conversation.label_id.length ||
       difference(
         conversationStore.option_filter_page_data.label_id,
-        conversation.label_id,
+        conversation.label_id
       ).length)
   )
     return
 
-  // lọc loại trừ nhãn
+  /** lọc loại trừ nhãn */
   if (
     conversationStore.option_filter_page_data.not_label_id &&
     intersection(
       conversationStore.option_filter_page_data.not_label_id,
-      conversation.label_id,
+      conversation.label_id
     ).length
   )
     return
 
-  // lọc khách spam
+  /** lọc khách spam */
   if (
     conversationStore.option_filter_page_data.is_spam_fb === 'YES' &&
     !conversation.is_spam_fb
   )
     return
 
-  // lọc hội thoại chưa gắn nhãn
+  /** lọc hội thoại chưa gắn nhãn */
   if (
     conversationStore.option_filter_page_data.not_exist_label &&
     size(conversation.label_id)
@@ -598,72 +637,91 @@ function validateConversation(
   return true
 }
 
+/**toast thông báo */
 class CustomToast extends Toast implements IAlert {
   public error(message: any): void {
-    // nếu lỗi là không có quyền truy cập thì thông báo khác
+    /** nếu lỗi là không có quyền truy cập thì thông báo khác */
     if (message?.message === 'COMMON.ACCESS_DENIED')
       return ref_alert_reach_quota.value?.toggleModal()
 
-    // thông báo lỗi
+    /** thông báo lỗi */
     super.error(message)
   }
 }
 
 class Main {
   /**đọc dữ liệu của các page được chọn lưu lại */
-  @loading(toRef(commonStore, 'is_loading_full_screen'))
-  // nếu lỗi thì chuyển về trang chọn page
+  /** nếu lỗi thì chuyển về trang chọn page */
   @error(new CustomToast())
   async getPageInfoToChat() {
-    // delay một chút để load dữ liệu từ local vào store kịp
+    /** delay một chút để load dữ liệu từ local vào store kịp */
     await $delay.exec(200)
 
-    /**danh sách id các page được chọn */
+    /**   danh sách id các page được chọn */
     const SELECTED_PAGE_IDS = keys(pageStore.selected_page_id_list)
 
-    // nếu không có page nào được chọn thì thôi
+    /** nếu không có page nào được chọn thì thôi */
     if (!SELECTED_PAGE_IDS?.length) return goDashboard()
 
-    // nạp lại dữ liệu của tổ chức hiện tại đang chọn cho chắc
+    /** nạp lại dữ liệu của tổ chức hiện tại đang chọn cho chắc */
     getCurrentOrgInfo()
 
     /** nếu vẫn không có tổ chức thì thôi */
     if (!orgStore.selected_org_id)
       throw $t('v1.view.main.dashboard.chat.error.get_org_info')
 
-    /**dữ liệu các trang đang chọn */
-    // const PAGES_OLD = await new N4SerivceAppPage().getPageInfoToChat(
-    //   orgStore.selected_org_id,
-    //   SELECTED_PAGE_IDS,
-    //   true
-    // )
-    const PAGES = await new N4SerivceAppPage().getPageDetails(
-      orgStore.selected_org_id,
-      SELECTED_PAGE_IDS,
-      true,
-    )
+    try {
+      /** dữ liệu các trang đang chọn */
+      // const PAGES_OLD = await new N4SerivceAppPage().getPageInfoToChat(
+      //   orgStore.selected_org_id,
+      //   SELECTED_PAGE_IDS,
+      //   true
+      // )
 
-    // nếu không có dữ liệu trang nào thì thôi
-    if (!PAGES) throw $t('v1.view.main.dashboard.chat.error.get_page_info')
+      /** Khởi tạo dữ liệu trang */
+      let pages
+      /** Lấy dữ liệu trang */
+      try {
+        pages = await new N4SerivceAppPage().getPageDetails(
+          orgStore.selected_org_id,
+          SELECTED_PAGE_IDS,
+          true
+        )
+      } catch (error) {
+        /** thông báo trang đã bị xóa */
+        alert_state.value = {
+          title: $t('v1.common.warning'),
+          description: $t('v1.view.main.dashboard.chat.error.page_deleted'),
+        }
+        ref_alert_reach_quota.value?.toggleModal()
+        return
+      }
 
-    // lưu dữ liệu trang đã chọn
-    pageStore.selected_page_list_info = PAGES
+      /**  nếu không có dữ liệu trang nào thì thôi*/
+      if (!pages) throw $t('v1.view.main.dashboard.chat.error.get_page_info')
 
-    // lưu dữ liệu nhân viên của các trang đã chọn
-    pageStore.selected_pages_staffs = User.getUsersInfo(PAGES)
+      /**  lưu dữ liệu trang đã chọn*/
+      pageStore.selected_page_list_info = pages
 
-    // lưu lại các widget trên chợ, để map cta
-    pageStore.market_widgets = await new N5AppV1AppApp()
-      .readMarket()
-      .catch(() => undefined)
+      /**  lưu dữ liệu nhân viên của các trang đã chọn*/
+      pageStore.selected_pages_staffs = User.getUsersInfo(pages)
 
-    // khởi tạo kết nối socket lên server
-    $socket.connect(
-      $env.host.n3_socket,
-      keys(pageStore.selected_page_id_list),
-      chatbotUserStore.chatbot_user?.fb_staff_id || '',
-      handleSocketEvent,
-    )
+      /**  lưu lại các widget trên chợ, để map cta*/
+      pageStore.market_widgets = await new N5AppV1AppApp()
+        .readMarket()
+        .catch(() => undefined)
+
+      /**  khởi tạo kết nối socket lên server*/
+      $socket.connect(
+        $env.host.n3_socket,
+        keys(pageStore.selected_page_id_list),
+        chatbotUserStore.chatbot_user?.fb_staff_id || '',
+        handleSocketEvent
+      )
+    } finally {
+      // tắt loading initialization
+      is_init_loading.value = false
+    }
   }
 
   /** lấy danh sách trang của tổ chức hiện tại */
@@ -685,7 +743,7 @@ class Main {
   markOrgHaveZalo(oss: OwnerShipInfo[]) {
     /**lọc ra các trang zalo cá nhân */
     pageStore.zlp_oss = oss.filter(
-      os => os?.page_info?.type === 'ZALO_PERSONAL',
+      os => os?.page_info?.type === 'ZALO_PERSONAL'
     )
   }
 }

@@ -123,7 +123,8 @@
         (message_type === 'client' ||
           message_type === 'page' ||
           message_type === 'group') &&
-        !message.is_undo
+        !message.is_undo &&
+        is_zalo_platform
       "
       :fb_page_id="message.fb_page_id"
       :sender_id="message.sender_id"
@@ -134,7 +135,8 @@
         (message_type === 'client' ||
           message_type === 'page' ||
           message_type === 'group') &&
-        !message.is_undo
+        !message.is_undo &&
+        is_zalo_platform
       "
       :fb_page_id="message.fb_page_id"
       :sender_id="message.sender_id"
@@ -187,7 +189,7 @@ const $props = withDefaults(
   }>(),
   {}
 )
-console.log('$props.message', $props.message)
+
 /**tin nhắn này thuộc về dạng nào */
 const message_type = computed(() => $props.message?.message_type)
 /**kích thước của file đầu tiên */
@@ -210,7 +212,16 @@ const attachments = computed(() => $props.message?.message_attachments)
 const primary_emotion = computed(() => $props.message?.ai?.[0]?.emotion)
 /**AI đánh dấu tin này bị rep chậm */
 const is_ai_slow_reply = computed(() => $props.message?.is_ai_slow_reply)
+/**Kiểm tra nền tảng có phải zalo không */
+const is_zalo_platform = computed(() =>
+  $props.message?.platform_type?.toUpperCase()?.includes('ZALO_PERSONAL')
+)
 
+/**
+ * Nguồn dữ liệu tin nhắn để hiển thị
+ * - Được tạo ra từ AI response, Attachments, Text thuần, hoặc Postback Title.
+ * - Service xử lý logic gom nhóm hoặc tách rời các thành phần tin nhắn.
+ */
 const message_source = computed<MessageTemplateInput[]>(() =>
   $mesage_service.genMessageSource(
     $props.message?.ai,

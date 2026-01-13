@@ -50,7 +50,8 @@ export function composableService() {
       if (!SOURCE?.payload)
         result.push({
           is_ai: false,
-          content: text || postback_title || $t('v1.common.unsupport_message'),
+          content: text || postback_title || '',
+          // || $t('v1.common.unsupport_message'),
         })
 
       // nếu chỉ có các nút bấm -> chỉ tạo 1 record
@@ -64,7 +65,10 @@ export function composableService() {
         })
 
       // nếu là dạng element (slider, file đã xử lý AI) -> tạo 1 mảng dữ liệu
-      if (SOURCE?.payload?.elements && SOURCE?.payload?.template_type !== 'button') 
+      if (
+        SOURCE?.payload?.elements &&
+        SOURCE?.payload?.template_type !== 'button'
+      )
         result.push(
           ...SOURCE?.payload?.elements?.map((element, index) => {
             /**dữ liệu của 1 template */

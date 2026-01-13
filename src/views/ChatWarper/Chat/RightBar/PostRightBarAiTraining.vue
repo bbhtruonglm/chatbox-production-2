@@ -15,21 +15,6 @@
     <!-- Nội dung -->
     <div class="p-3 flex flex-col w-full gap-1">
       <!-- Input / Textarea -->
-      <div
-        v-if="updater"
-        class="flex justify-between items-center text-xs text-slate-500 mb-1"
-      >
-        <div class="flex items-center gap-1">
-          <span>{{ $t('Thêm bởi:') }}</span>
-          <img
-            v-if="updater.avatar"
-            :src="updater.avatar"
-            class="size-4 rounded-full object-cover"
-          />
-          <span class="font-semibold text-slate-700">{{ updater.name }}</span>
-        </div>
-        <div>{{ $t('Tạo lúc') }} {{ updated_at }}</div>
-      </div>
       <div>
         <textarea
           ref="textarea_ref"
@@ -37,16 +22,16 @@
           v-model="description"
           rows="6"
           class="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
-          :placeholder="$t('Nhập nội dung để huấn luyện AI tư vấn khách hàng')"
+          placeholder="Nhập nội dung để huấn luyện AI tư vấn khách hàng"
         ></textarea>
 
         <input
           v-else
           type="text"
           v-model="description"
-          @focus="handle_focus"
+          @focus="expandAndFocus"
           class="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          :placeholder="$t('Nhập nội dung để huấn luyện AI tư vấn khách hàng')"
+          placeholder="Nhập nội dung để huấn luyện AI tư vấn khách hàng"
         />
       </div>
       <div>
@@ -84,26 +69,38 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
-import dayjs from 'dayjs'
+import { computed, nextTick, ref, watch } from 'vue'
 import { SparklesIcon } from '@heroicons/vue/24/solid'
 import { update_info_conversation } from '@/service/api/chatbox/n4-service'
 import { reject } from 'lodash'
 import { useConversationStore } from '@/stores'
 /** Trạng thái mở rộng */
 const is_expanded = ref(false)
-/** ref textarea */
-const textarea_ref = ref<HTMLTextAreaElement | null>(null)
 /** mô tả */
 const description = ref<string>('')
+/** ref của textarea */
+const textarea_ref = ref<HTMLTextAreaElement | null>(null)
+
+/** mở rộng và focus vào textarea */
+const expandAndFocus = async () => {
+  is_expanded.value = true
+  await nextTick()
+  textarea_ref.value?.focus()
+}
 /** Khai báo conversation */
 const conversationStore = useConversationStore()
 /** Theo dõi data trong store */
 watch(
-  () => conversationStore.select_conversation?.ai_description,
-  newVal => {
-    /** Gán giá trị */
-    description.value = newVal || ''
+  () => conversationStore.select_conversation?.data_key,
+  (newVal, oldVal) => {
+    /** Nếu id thay đổi thì mới cập nhật */
+    if (newVal !== oldVal) {
+      /** Gán giá trị */
+      description.value =
+        conversationStore.select_conversation?.ai_description || ''
+      /** Reset trạng thái mở rộng */
+      is_expanded.value = false
+    }
   },
   { immediate: true }
 )
@@ -111,13 +108,6 @@ watch(
 /** Hủy bỏ chỉnh sửa */
 const cancel = () => {
   is_expanded.value = false
-}
-
-/** Xử lý focus input */
-const handle_focus = async () => {
-  is_expanded.value = true
-  await nextTick()
-  textarea_ref.value?.focus()
 }
 /**id của trang */
 const page_id = computed(
@@ -127,47 +117,60 @@ const page_id = computed(
 const client_id = computed(
   () => conversationStore.select_conversation?.fb_client_id
 )
-
-/** Người cập nhật - Mock data*/
-const updater = computed(
-  () =>
-    conversationStore.select_conversation?.ai_updated_by || {
-      user_id: '1',
-      name: 'Nguyễn Văn A',
-      avatar:
-        'https://s120-ava-talk.zadn.vn/2/6/6/5/6/120/7db926a798d1d81de10375677ba11993.jpg',
-    }
-)
-/** Thời gian cập nhật */
-const updated_at = computed(() => {
-  const time =
-    conversationStore.select_conversation?.ai_updated_at || 1734253920000
-  if (!time) return ''
-  return dayjs(time).format('HH:mm - DD/MM/YYYY')
-})
-
+/** Gọi API lưu dữ liệu */
+/** Gọi API lưu dữ liệu */
 /** Gọi API lưu dữ liệu */
 const save = async () => {
-  try {
-    /**gọi api cập nhật tên khách hàng */
-    await new Promise((resolve, reject) => {
-      /**nếu chưa có id của trang hoặc khách hàng thì bỏ qua */
-      if (!page_id.value || !client_id.value) return
+  /** Capture lại hội thoại và nội dung tại thời điểm bấm lưu */
+  const current_conversation = conversationStore.select_conversation
+  const current_description = description.value
 
-      update_info_conversation(
-        {
-          page_id: page_id.value,
-          client_id: client_id.value,
-          ai_description: description.value,
-        },
-        (e, r) => {
-          if (e) reject(e)
-          else resolve(r)
-        }
-      )
+  if (!current_conversation?.fb_page_id || !current_conversation?.fb_client_id)
+    return
+
+  /** Payload gửi đi */
+  const payload = {
+    page_id: current_conversation.fb_page_id,
+    client_id: current_conversation.fb_client_id,
+    ai_description: current_description,
+  }
+
+  try {
+    /** gọi api cập nhật tên khách hàng */
+    await new Promise((resolve, reject_promise) => {
+      update_info_conversation(payload, (error, response) => {
+        /** Nếu lỗi thì reject */
+        if (error) reject_promise(error)
+        /** Nếu thành công thì resolve */ else resolve(response)
+      })
     })
-    is_expanded.value = false
-    console.log('Đã lưu:', description.value)
+
+    /** 1. Cập nhật object đã capture (để chắc chắn) */
+    current_conversation.ai_description = payload.ai_description
+
+    /** 2. Cập nhật trong danh sách hội thoại của store (QUAN TRỌNG: để đồng bộ khi chuyển qua lại) */
+    if (
+      current_conversation.data_key &&
+      conversationStore.conversation_list[current_conversation.data_key]
+    ) {
+      conversationStore.conversation_list[
+        current_conversation.data_key
+      ].ai_description = payload.ai_description
+    }
+
+    /** 3. Check conversation đang được chọn hiện tại và cập nhật nếu khớp  */
+    if (
+      conversationStore.select_conversation?.fb_page_id === payload.page_id &&
+      conversationStore.select_conversation?.fb_client_id === payload.client_id
+    ) {
+      conversationStore.select_conversation.ai_description =
+        payload.ai_description
+
+      /** Đang ở đúng conversation thì tắt form */
+      is_expanded.value = false
+    }
+
+    console.log('Đã lưu:', payload.ai_description)
   } catch (err) {
     console.error('Lỗi khi lưu:', err)
   }

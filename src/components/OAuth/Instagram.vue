@@ -24,7 +24,7 @@
       </button>
     </template>
   </EmptyPage>
-  <AlertRechQuota ref="alert_reach_quota_page_ref" />
+  <AlertWarning ref="alert_reach_quota_page_ref" />
 </template>
 <script setup lang="ts">
 import { useCommonStore, useOrgStore } from '@/stores'
@@ -32,7 +32,7 @@ import { WindowAction, type IWindowAction } from '@/utils/helper/Navigation'
 import { container } from 'tsyringe'
 
 import EmptyPage from '@/views/Dashboard/ConnectPage/EmptyPage.vue'
-import AlertRechQuota from '@/components/AlertModal/AlertRechQuota.vue'
+import AlertWarning from '@/components/AlertModal/AlertWarning.vue'
 
 import InstagramIcon from '@/components/Icons/Instagram.vue'
 import { ref } from 'vue'
@@ -41,7 +41,7 @@ const commonStore = useCommonStore()
 const orgStore = useOrgStore()
 
 /**ref của modal thông báo hết quota */
-const alert_reach_quota_page_ref = ref<InstanceType<typeof AlertRechQuota>>()
+const alert_reach_quota_page_ref = ref<InstanceType<typeof AlertWarning>>()
 
 class Main {
   /**
@@ -54,7 +54,7 @@ class Main {
   ) {}
   /**cấp quyền bằng cách redirect của FB */
   async oAuthByRedirect() {
-    // nếu đã đạt tới giới hạn trang thì báo lỗi
+    /**  nếu đã đạt tới giới hạn trang thì báo lỗi*/
     if (orgStore.isReachPageQuota())
       return alert_reach_quota_page_ref.value?.toggleModal()
 
@@ -65,7 +65,7 @@ class Main {
     /**scope của IG */
     const SCOPE = encodeURIComponent($env.instagram.scope.join(','))
 
-    // redirect sang trang cấp quyền của IG
+    /**  redirect sang trang cấp quyền của IG*/
     this.SERVICE_WINDOW_ACTION.redirect(
       `https://www.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${APP_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}`
     )

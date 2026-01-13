@@ -55,13 +55,42 @@ export interface ICdn {
    * @param index index của media
    */
   fbMessageMedia(page_id?: string, message_id?: string, index?: number): string
+  /**
+   * đường dẫn media của message
+   * @param page_id id của trang
+   * @param message_id id của message
+   * @param index index của media
+   */
   igMessageMedia(page_id?: string, message_id?: string, index?: number): string
+  /**
+   * đường dẫn media của message
+   * @param page_id id của trang
+   * @param message_id id của message
+   * @param index index của media
+   */
+  webMessageMedia(page_id?: string, message_id?: string, index?: number): string
+  /**
+   * đường dẫn media của message
+   * @param page_id id của trang
+   * @param message_id id của message
+   * @param index index của media
+   */
   tiktokMessageMedia(
     page_id?: string,
     message_id?: string,
     index?: number
   ): string
-  webMessageMedia(page_id?: string, message_id?: string, index?: number): string
+  /**
+   * đường dẫn media của message
+   * @param page_id id của trang
+   * @param message_id id của message
+   * @param index index của media
+   */
+  zaloMessageMedia(
+    page_id?: string,
+    message_id?: string,
+    index?: number
+  ): string
   /**
    * đường dẫn ảnh đại diện của page zalo
    * @param page_id id của trang
@@ -112,6 +141,9 @@ export class Cdn implements ICdn {
   }
   tiktokMessageMedia(page_id?: string, message_id?: string, index?: number) {
     return `${this.HOST}/media/tiktok/${page_id}/message/${message_id}/${index}`
+  }
+  zaloMessageMedia(page_id?: string, message_id?: string, index?: number) {
+    return `${this.HOST}/media/zlp/${page_id}/message/${message_id}/${index}`
   }
   zlpPageAvt(page_id?: string) {
     return `${this.HOST}/media/zlp/${page_id}/page`

@@ -1,6 +1,11 @@
 <template>
   <div class="flex-shrink-0 px-2 gap-1 flex justify-start items-center">
     <div
+      v-if="is_loading"
+      class="h-8 w-40 bg-slate-200 rounded animate-pulse"
+    ></div>
+    <div
+      v-else
       v-tooltip.bottom="`v${version}`"
       class="font-semibold text-2xl truncate"
     >
@@ -168,12 +173,18 @@ import { storeToRefs } from 'pinia'
 
 /**tab đang kích hoạt */
 type IActiveTab = 'CHAT' | 'POST'
-
+// store
 const conversationStore = useConversationStore()
 const commonStore = useCommonStore()
 const pageStore = usePageStore()
 const orgStore = useOrgStore()
+// i18n
 const { t: $t } = useI18n()
+// props
+defineProps<{
+  /** có nên hiển thị skeleton loading ko */
+  is_loading?: boolean
+}>()
 
 const { modal_zalo_personal_ref, message_data, modal_zalo_create_group_ref } =
   storeToRefs(useMessageStore())

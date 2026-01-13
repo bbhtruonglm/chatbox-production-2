@@ -20,7 +20,7 @@ import ClientAvatar from '@/components/Avatar/ClientAvatar.vue'
 import PageAvatar from '@/components/Avatar/PageAvatar.vue'
 
 import type { ConversationInfo } from '@/service/interface/app/conversation'
-
+/** Props */
 const $props = withDefaults(
   defineProps<{
     source?: ConversationInfo
@@ -28,32 +28,35 @@ const $props = withDefaults(
   {}
 )
 
+/** user store */
 const chatbotUserStore = useChatbotUserStore()
+
+/** org store */
 const orgStore = useOrgStore()
 
-/**kiểm soát việc page avatar được hiển thị như thế nào */
+/** kiểm soát việc page avatar được hiển thị như thế nào */
 function controlPageAvatarVisible() {
-  /**thiết lập tổ chức */
+  /** thiết lập tổ chức */
   const ORG_CONFIG = orgStore.selected_org_info?.org_config
 
-  /**thiết lập cá nhân */
+  /** thiết lập cá nhân */
   const USER_CONFIG = chatbotUserStore.personal_settings
 
   /**code css ẩn div */
   const HIDE_CSS = 'hidden group-hover:block'
 
-  // ưu tiên nếu user có thiết lập cá nhân
+  /** ưu tiên nếu user có thiết lập cá nhân */
   if (USER_CONFIG?.is_enable_personal_setting) {
-    // ẩn avatar page theo thiết lập user
+    /** ẩn avatar page theo thiết lập user */
     if (USER_CONFIG?.is_hide_page_avatar) return HIDE_CSS
 
-    // không ẩn theo thiết lập user
+    /** không ẩn theo thiết lập user */
     return
   }
 
-  // nếu tổ chức thiết lập ẩn thì ẩn luôn
+  /** nếu tổ chức thiết lập ẩn thì ẩn luôn */
   if (ORG_CONFIG?.org_is_hide_page_avatar) return HIDE_CSS
 
-  // không thì thôi
+  /** không thì thôi */
 }
 </script>

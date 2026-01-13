@@ -6,7 +6,10 @@
           <div class="size-9 overflow-hidden group">
             <div class="size-full group-hover:hidden">
               <img
-                v-if="orgStore.selected_org_info?.org_info?.org_avatar"
+                v-if="
+                  $main.isShowOrgLogo() &&
+                  orgStore.selected_org_info?.org_info?.org_avatar
+                "
                 :src="orgStore.selected_org_info?.org_info?.org_avatar"
                 class="w-full h-full rounded-full"
               />
@@ -311,6 +314,11 @@ class Main {
     // nếu chỉ cho nv xem của mình thì không hiện lọc nhân viên
     return !SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff
   }
+  /**kiểm tra xem có hiển thị logo tổ chức không */
+  isShowOrgLogo() {
+    return orgStore.isBusinessPack()
+  }
+
   /** Xóa toàn bộ lọc đã chọn */
   clearAllFilter() {
     filter_interact.value?.clearThisFilter()

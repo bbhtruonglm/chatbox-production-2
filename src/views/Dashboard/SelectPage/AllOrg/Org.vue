@@ -93,7 +93,7 @@ const active_page_list = defineModel<PageData[]>('active_page_list')
 
 /** danh sách các page thuộc tổ chức hiện tại */
 const page_of_current_org = computed(() => {
-  // console.log(pageStore.active_page_list, 'active_page_list')
+  console.log(pageStore.active_page_list, 'active_page_list')
   return pickBy(pageStore.active_page_list, page => {
     return $main.isInCurrentOrg(page)
   })

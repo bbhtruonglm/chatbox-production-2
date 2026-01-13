@@ -7,7 +7,7 @@
     :class="{
       'w-3 h-3': getLabelConfig()?.includes('ICON'),
     }"
-    class="text-white rounded-full text-[9px] truncate px-1 w-12"
+    class="text-white rounded-md text-[9px] truncate px-1 w-12"
   >
     <template v-if="!getLabelConfig()?.includes('ICON')">
       {{ getILabel(page_id, label_id)?.title }}

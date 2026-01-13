@@ -22,7 +22,7 @@
   </div>
   <PageAvatar
     v-else-if="conversation?.conversation_type === 'POST'"
-    :page_info="conversationStore.getPage()"
+    :page_info="conversationStore.getPageById(conversation?.fb_page_id || '')"
   />
   <div
     v-else

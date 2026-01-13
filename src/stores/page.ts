@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { saveIndexedDB, getIndexedDB, removeIndexedDB } from '@/service/helper/store'
+import {
+  saveIndexedDB,
+  getIndexedDB,
+  removeIndexedDB,
+} from '@/service/helper/store'
 import { saveLocal, getLocal } from '@/service/helper/store'
 
 import type { PageData, PageList } from '@/service/interface/app/page'
@@ -17,7 +21,11 @@ import type {
 } from '@/service/interface/app/billing'
 import type { ILabel } from '@/service/interface/app/label'
 import { usePageManager } from '@/views/Dashboard/composables/usePageManager'
-import { useOrgStore, usePageManagerStore, useSelectPageStore } from './dashboard'
+import {
+  useOrgStore,
+  usePageManagerStore,
+  useSelectPageStore,
+} from './dashboard'
 
 export const usePageStore = defineStore('page_store', () => {
   /** -------------- STAGE -------------- */
@@ -32,11 +40,7 @@ export const usePageStore = defineStore('page_store', () => {
   const all_page_list = ref<PageList>({})
 
   // đọc dữ liệu được lưu ở indexeddb
-  getIndexedDB(
-    'all_page_list',
-    undefined,
-    (e, r) => (all_page_list.value = r)
-  )
+  getIndexedDB('all_page_list', undefined, (e, r) => (all_page_list.value = r))
   // lưu dữ liệu xuống indexed khi có thay đổi
   saveIndexedDB(all_page_list, 'all_page_list')
 
@@ -49,6 +53,8 @@ export const usePageStore = defineStore('page_store', () => {
     get: () => {
       /** dữ liệu các page sau khi lọc */
       let result = all_page_list.value
+
+      console.log(result, 'result')
       // lọc theo nền tảng đang chọn
       result = filterPageByPlatform(result, selectPageStore.current_menu)
       // lọc theo tìm kiếm
@@ -61,17 +67,11 @@ export const usePageStore = defineStore('page_store', () => {
   })
 
   // đọc dữ liệu được lưu ở indexeddb
-  getIndexedDB(
-    'active_page_list',
-    undefined,
-    (e, r) => {
-      if(r) removeIndexedDB('active_page_list')
-    }
-  )
+  getIndexedDB('active_page_list', undefined, (e, r) => {
+    if (r) removeIndexedDB('active_page_list')
+  })
   // lưu dữ liệu xuống indexed khi có thay đổi
   // saveIndexedDB(active_page_list, 'active_page_list')
-
-  
 
   // đọc dữ liệu được lưu ở indexeddb
   getIndexedDB('map_orgs', undefined, (e, r) => (map_orgs.value = r))

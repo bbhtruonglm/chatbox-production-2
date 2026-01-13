@@ -39,7 +39,6 @@
         <Input
           ref="input_chat_ref"
           :mention_ref="mention_ref"
-          :conversation="conversation"
           @keyup="onInputKeyup"
           :class="{
             'animate-fast-pulse': messageStore.is_input_run_ai,
@@ -104,7 +103,6 @@ import { FaceSmileIcon, SparklesIcon } from '@heroicons/vue/24/outline'
 import SlashQuareIcon from '@/components/Icons/SlashQuare.vue'
 import Dropdown from '@/components/Dropdown.vue'
 
-const props = defineProps<{ conversation?: any }>()
 const messageStore = useMessageStore()
 const commonStore = useCommonStore()
 const conversationStore = useConversationStore()
@@ -123,9 +121,7 @@ const mention_ref = ref<InstanceType<typeof Mention>>()
 const is_loading_ai_answer = ref<boolean>(false)
 
 /**hội thoại hiện tại đang dược chọn */
-const conversation = computed(
-  () => props.conversation || conversationStore.select_conversation
-)
+const conversation = computed(() => conversationStore.select_conversation)
 
 /**câu trả lời hiện tại */
 const ai_answer = computed(() => conversation.value?.ai_answer)

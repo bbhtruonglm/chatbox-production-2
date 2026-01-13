@@ -374,7 +374,7 @@ const MONTHS = [
   },
 ]
 /** giá trị mặc định */
-const SELECTED = ref('1')
+const SELECTED = ref('12')
 
 /**nội dung của các gói */
 const CONTENTS: Record<string, IContent> = {

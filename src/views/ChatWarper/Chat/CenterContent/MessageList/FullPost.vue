@@ -24,12 +24,7 @@
             <h1 class="font-semibold text-sm">
               {{ conversationStore.getPage()?.name }}
             </h1>
-            <button
-              @click="$post_service.openCommentOnFb(post_id)"
-              class="text-xs text-blue-700"
-            >
-              {{ $t('Xem trên Facebook') }}
-            </button>
+            <!-- Moved to bottom -->
           </div>
           <span class="text-xs">
             {{ $t('Người đăng') }}:
@@ -38,10 +33,37 @@
         </div>
       </div>
       <div class="py-2 px-3 text-xs">
-        <span class="whitespace-pre-line line-clamp-5">
+        <span
+          class="whitespace-pre-line"
+          :class="{
+            'line-clamp-5': !is_expanded,
+          }"
+        >
           {{ conversationStore.select_conversation_post?.content?.message }}
         </span>
-        <!-- <span class="font-bold cursor-pointer hover:underline">Xem thêm</span> -->
+        <span
+          v-if="is_long_content"
+          @click="is_expanded = !is_expanded"
+          class="font-bold cursor-pointer hover:underline text-black block mt-1"
+        >
+          {{ is_expanded ? $t('Thu gọn') : $t('Xem thêm') }}
+        </span>
+        <div class="flex items-center justify-end gap-3 mt-2">
+          <button
+            @click="$main.filterByPost()"
+            class="text-blue-700 flex items-center gap-1 hover:underline"
+          >
+            {{ $t('Lọc theo bài viết') }}
+            <FunnelIcon class="size-3" />
+          </button>
+          <button
+            @click="$post_service.openCommentOnFb(post_id)"
+            class="text-blue-700 flex items-center gap-1 hover:underline"
+          >
+            {{ $t('Xem trên Facebook') }}
+            <ArrowTopRightOnSquareIcon class="size-3" />
+          </button>
+        </div>
       </div>
       <img
         v-if="
@@ -117,6 +139,11 @@ import LoadMoreBtn from '@/views/ChatWarper/Chat/CenterContent/MessageList/PostT
 import type { FacebookCommentPost } from '@/service/interface/app/post'
 import type { MessageInfo } from '@/service/interface/app/message'
 
+import {
+  ArrowTopRightOnSquareIcon,
+  FunnelIcon,
+} from '@heroicons/vue/24/outline'
+
 /**dữ liệu từ socket */
 interface CustomEventMessage extends Event {
   detail?: MessageInfo
@@ -124,9 +151,13 @@ interface CustomEventMessage extends Event {
 
 const { PostService } = composableService()
 
+/** service xử lý bài viết */
 const $post_service = container.resolve(PostService)
+/** store hội thoại */
 const conversationStore = useConversationStore()
+/** helper xử lý đường dẫn ảnh, tài nguyên */
 const $cdn = container.resolve(Cdn)
+/** helper format dữ liệu */
 const $format = container.resolve(Format)
 
 /**giới hạn số bản ghi */
@@ -169,6 +200,15 @@ const total_reaction = computed(() => {
     analytic.value?.total_reaction_anger,
   ])
 })
+
+/** Trạng thái mở rộng nội dung */
+const is_expanded = ref(false)
+/** Kiểm tra nội dung có dài không */
+const is_long_content = computed(
+  () =>
+    (conversationStore.select_conversation_post?.content?.message?.length ||
+      0) > 300
+)
 
 class Main {
   /**
@@ -254,6 +294,23 @@ class Main {
     )
       post_comments.value.unshift(COMMENT)
   }
+
+  /**
+   * Lọc hội thoại theo bài viết
+   * - Chuyển sang tab CHAT
+   * - Gắn post_id vào bộ lọc
+   */
+  filterByPost() {
+    // nếu không có id bài viết thì không làm gì
+    if (!post_id.value) return
+
+    // cập nhật dữ liệu bộ lọc
+    conversationStore.option_filter_page_data = {
+      ...conversationStore.option_filter_page_data,
+      conversation_type: 'CHAT',
+      post_id: post_id.value,
+    }
+  }
 }
 const $main = new Main()
 
@@ -281,6 +338,11 @@ onUnmounted(() => {
 // lấy dữ liệu bài post khi conversation thay đổi
 watch(
   () => post_id.value,
-  () => $main.getPostData()
+  () => {
+    // reset dữ liệu cũ
+    $main.getPostData()
+    // reset trạng thái mở rộng
+    is_expanded.value = false
+  }
 )
 </script>

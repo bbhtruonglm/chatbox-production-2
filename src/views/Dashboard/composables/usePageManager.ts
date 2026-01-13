@@ -96,7 +96,7 @@ export function usePageManager() {
 
       const PAGE_DATA_2 = await new N4SerivceAppPage().getListActivePage({})
       // const PAGE_DATA = await new N4SerivceAppPage().getListPage({})
-
+      console.log(PAGE_DATA_2, 'PAGE_DATA_2')
       // nếu không có dữ liệu trang thì thôi
       if (isEmpty(PAGE_DATA_2)) return
 

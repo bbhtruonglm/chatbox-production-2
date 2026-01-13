@@ -19,10 +19,7 @@
           :class="class_modal"
           class="gap-2 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-glass p-2 max-w-[95%] max-h-[95%] flex flex-col shadow-lg"
         >
-          <div
-            v-if="is_show_header"
-            class="flex items-center justify-between"
-          >
+          <div class="flex items-center justify-between">
             <div
               :class="class_header"
               class="text-lg font-medium flex-shrink-0"
@@ -43,7 +40,6 @@
             <slot name="body"></slot>
           </div>
           <div
-            v-if="is_show_footer"
             :class="class_footer"
             class="flex-shrink-0"
           >
@@ -74,15 +70,8 @@ const $props = withDefaults(
     class_footer?: string
     /**id nhận dạng */
     id?: string
-    /**ẩn hiện header */
-    is_show_header?: boolean
-    /**ẩn hiện footer */
-    is_show_footer?: boolean
   }>(),
-  {
-    is_show_header: true,
-    is_show_footer: true,
-  }
+  {}
 )
 
 /**ẩn hiện modal */

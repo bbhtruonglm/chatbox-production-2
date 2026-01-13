@@ -41,7 +41,7 @@
     :page_id
     @done="$main.done"
   />
-  <AlertRechQuota ref="alert_reach_quota_page_ref" />
+  <AlertWarning ref="alert_reach_quota_page_ref" />
 </template>
 <script setup lang="ts">
 import { inject, ref, toRef } from 'vue'
@@ -57,7 +57,7 @@ import { KEY_TOGGLE_MODAL_FUNCT } from '@/views/Dashboard/ConnectPage/symbol'
 
 import EmptyPage from '@/views/Dashboard/ConnectPage/EmptyPage.vue'
 import InjectScript from '@/views/Dashboard/ConnectPage/Website/InjectScript.vue'
-import AlertRechQuota from '@/components/AlertModal/AlertRechQuota.vue'
+import AlertWarning from '@/components/AlertModal/AlertWarning.vue'
 
 import WebIcon from '@/components/Icons/Web.vue'
 import type { IAlert } from '@/utils/helper/Alert/type'
@@ -78,17 +78,17 @@ const name = ref<string>()
 /**ref của modal hướng dẫn nhúng script */
 const inject_script_ref = ref<InstanceType<typeof InjectScript>>()
 /**ref của modal thông báo hết quota */
-const alert_reach_quota_page_ref = ref<InstanceType<typeof AlertRechQuota>>()
+const alert_reach_quota_page_ref = ref<InstanceType<typeof AlertWarning>>()
 /**id trang sau khi tạo */
 const page_id = ref<string>()
 
 class CustomToast extends Toast implements IAlert {
   public error(message: any): void {
-    // nếu lỗi là không có quyền truy cập thì thông báo khác
+    /** nếu lỗi là hết quota trang thì thông báo hết quota */
     if (message?.message === 'REACH_QUOTA.PAGE')
       return alert_reach_quota_page_ref.value?.toggleModal()
 
-    // thông báo lỗi
+    /** thông báo lỗi */
     super.error(message)
   }
 }
@@ -98,15 +98,15 @@ class Main {
   @loading(toRef(commonStore, 'is_loading_full_screen'))
   @error(new CustomToast())
   async createWebsite() {
-    // nếu chưa nhập tên thì không thực hiện
+    /** nếu chưa nhập tên thì không thực hiện */
     if (!name.value) return
     if (!orgStore.selected_org_id) return
 
-    // kiểm tra tên trang web có hợp lệ không
+    /** kiểm tra tên trang web có hợp lệ không */
     if (!isDomain(name.value))
       throw $t('v1.view.main.dashboard.select_platform.website.wrong_name')
 
-    // nếu tổ chức hiện tại đã hết quota thì cảnh báo
+    /** nếu tổ chức hiện tại đã hết quota thì cảnh báo */
     if (orgStore.isReachPageQuota())
       return alert_reach_quota_page_ref.value?.toggleModal()
 
@@ -116,27 +116,27 @@ class Main {
       org_id: orgStore.selected_org_id,
     })
 
-    // lưu lại id trang mới được tạo
+    /** lưu lại id trang mới được tạo */
     page_id.value = PAGE?.fb_page_id
 
-    // mở modal hướng dẫn nhúng script
+    /** mở modal hướng dẫn nhúng script */
     inject_script_ref.value?.toggleModal()
   }
   /**sau khi xong */
   async done() {
-    // reset lại giá trị
+    /** reset lại giá trị */
     name.value = ''
 
-    // reset id trang
+    /** reset id trang */
     page_id.value = undefined
 
-    // quay lại page danh sách trang
+    /** quay lại page danh sách trang */
     // connectPageStore.selectMenu('PAGE')
 
-    // thông báo ra modal là đã xong
+    /** thông báo ra modal là đã xong */
     $emit('done')
 
-    // tắt modal kết nối nền tảng
+    /** tắt modal kết nối nền tảng */
     await toggleModal?.()
   }
 }

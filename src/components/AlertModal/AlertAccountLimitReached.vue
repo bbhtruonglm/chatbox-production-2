@@ -21,9 +21,7 @@
             @click="closeModal()"
             class="absolute top-5 right-5 size-5 cursor-pointer"
           />
-          <div
-            class="text-lg font-semibold"
-          >
+          <div class="text-lg font-semibold">
             {{ $t('Đã đạt giới hạn gói') }}
           </div>
           <div class="text-zinc-500">
@@ -36,7 +34,9 @@
             </p>
           </div>
           <div class="flex justify-between items-center">
-            <button v-if="orgStore.isAdminOrg()" class="btn-custom bg-green-100 text-green-600 mt-6"
+            <button
+              v-if="orgStore.isAdminOrg()"
+              class="btn-custom bg-green-100 text-green-600 mt-6"
               @click="goToPay"
             >
               {{ $t('Đi tới nâng cấp gói') }}
@@ -49,10 +49,10 @@
 </template>
 
 <script setup lang="ts">
-import { useOrgStore } from '@/stores';
-import { XMarkIcon } from '@heroicons/vue/24/outline';
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useOrgStore } from '@/stores'
+import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const $emit = defineEmits(['close_modal'])
 
@@ -80,7 +80,12 @@ function closeModal() {
   toggleModal()
 }
 
-defineExpose({ toggleModal })
+/** mở modal */
+function openModal() {
+  is_open.value = true
+}
+
+defineExpose({ toggleModal, openModal })
 </script>
 <style scoped lang="scss">
 .btn-custom {

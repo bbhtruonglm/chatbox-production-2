@@ -55,6 +55,8 @@ const pageManagerStore = usePageManagerStore()
 /**danh sách page của từng tổ chức */
 const active_pages_of_orgs = ref<Record<string, PageData[]>>({})
 
+console.log(active_pages_of_orgs.value, 'active_pages_of_orgs')
+
 /** mảng các reference tới các component của từng tổ chức */
 const org_refs = ref<InstanceType<typeof Org>[]>([])
 

@@ -86,14 +86,6 @@
           >
             {{ $t('v1.view.main.dashboard.chat.post.private_inbox') }}
           </button>
-          <button
-            v-if="!is_from_page"
-            @click="modal_message_ref?.toggleModal()"
-            class="flex items-center gap-1 hover:text-blue-600"
-          >
-            {{ $t('Tin nhắn') }}
-            <ArrowTopRightOnSquareIcon class="size-4" />
-          </button>
         </div>
       </div>
 
@@ -146,11 +138,6 @@
         </div>
       </div>
     </div>
-    <MessageModal
-      ref="modal_message_ref"
-      :page_id="page_id"
-      :client_id="client_id"
-    />
   </div>
 </template>
 <script setup lang="ts">
@@ -177,11 +164,7 @@ import LikeIcon from '@/components/Icons/Like.vue'
 import HahaIcon from '@/components/Icons/Haha.vue'
 import SadIcon from '@/components/Icons/Sad.vue'
 import AngryIcon from '@/components/Icons/Angry.vue'
-import {
-  ArrowUpCircleIcon,
-  ArrowTopRightOnSquareIcon,
-} from '@heroicons/vue/24/solid'
-import MessageModal from '@/views/ChatWarper/Chat/CenterContent/MessageList/PostTemplate/CommentModal/MessageModal.vue'
+import { ArrowUpCircleIcon } from '@heroicons/vue/24/solid'
 
 import type { FacebookCommentPost } from '@/service/interface/app/post'
 import type {
@@ -213,8 +196,6 @@ const { MessageService } = composableServiceMessage()
 
 /**loading của bài post */
 const main_loading = defineModel('main_loading')
-/** Ref modal message */
-const modal_message_ref = ref<InstanceType<typeof MessageModal>>()
 
 const $emit = defineEmits(['focus_input'])
 const $props = withDefaults(
@@ -264,7 +245,9 @@ const page_id = computed(
   () => conversationStore.select_conversation?.fb_page_id
 )
 /**id của client */
-const client_id = computed(() => $props.comment?.from?.id)
+const client_id = computed(
+  () => conversationStore.select_conversation?.fb_client_id
+)
 /**có phải từ page không */
 const is_from_page = computed(() => page_id.value === $props.comment?.from?.id)
 /**cảm xúc của bình luận này */

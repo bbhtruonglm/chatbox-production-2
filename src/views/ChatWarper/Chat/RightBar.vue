@@ -1,5 +1,7 @@
 <template>
+  <SkeletonLoading v-if="is_loading" />
   <div
+    v-else
     id="chat__right-bar"
     class="w-[400px] h-full flex-shrink-0 overflow-y-auto flex flex-col gap-2"
   >
@@ -201,6 +203,7 @@ import Dropdown from '@/components/Dropdown.vue'
 import AiJourney from '@/views/ChatWarper/Chat/CenterContent/MessageList/AiJourney.vue'
 import PostRightBar from '@/views/ChatWarper/Chat/RightBar/PostRightBar.vue'
 import WidgetSorting from '@/views/ChatWarper/Chat/RightBar/WidgetSorting.vue'
+import SkeletonLoading from '@/views/ChatWarper/Chat/RightBar/SkeletonLoading.vue'
 import { useWidget } from '@/views/composables/useWidget'
 
 import { CheckIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
@@ -213,6 +216,11 @@ import {
 } from '@heroicons/vue/24/solid'
 
 import type { AppInstalledInfo } from '@/service/interface/app/widget'
+// props
+defineProps<{
+  /** có nên hiển thị skeleton loading ko */
+  is_loading?: boolean
+}>()
 
 const $router = useRouter()
 

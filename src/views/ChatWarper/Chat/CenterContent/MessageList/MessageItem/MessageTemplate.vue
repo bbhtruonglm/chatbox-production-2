@@ -72,6 +72,18 @@
       </p>
       <!-- class="enter-line" -->
     </div>
+
+    <!-- Hiển thị text gốc (caption) nếu bị ghi đè bởi content AI (subtitle) -->
+    <div
+      v-if="
+        message.message_text &&
+        message.message_text !== data_source?.content &&
+        data_source?.is_ai
+      "
+      class="text-sm enter-line pt-2 border-t mt-2 border-slate-100"
+      @click="clickCopyPhoneEmail"
+      v-html="fixXss($markdown.render(message.message_text))"
+    />
     <Action
       v-if="data_source?.list_button?.length"
       :list_button="data_source?.list_button"

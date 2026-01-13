@@ -51,20 +51,21 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { map, sortBy } from 'lodash'
+import { onMounted, ref, watch } from 'vue'
+import { map, partition, sortBy } from 'lodash'
 import { useCommonStore, useConversationStore, useOrgStore } from '@/stores'
-import { usePageStore } from '@/stores/page'
 import { loading } from '@/utils/decorator/Loading'
 import { error } from '@/utils/decorator/Error'
 import { container } from 'tsyringe'
 import { Toast } from '@/utils/helper/Alert/Toast'
 import { N4SerivceAppOneConversation } from '@/utils/api/N4Service/Conversation'
+import { nextTick } from 'async'
 import { ExternalSite } from '@/utils/helper/ExternalSite'
 
 import Loading from '@/components/Loading.vue'
 import LabelItem from '@/views/ChatWarper/Chat/CenterContent/InputChat/ListLabel/LabelItem.vue'
 
+import CogBoldIcon from '@/components/Icons/CogBold.vue'
 import ArrowDownIcon from '@/components/Icons/ArrowDown.vue'
 
 import type { ICustomLabel } from './ListLabel/type'
@@ -72,23 +73,12 @@ import {
   CountHiddenItem,
   type ICounHiddenItem,
 } from '@/utils/helper/CountHiddenItem'
-import type { ConversationInfo } from '@/service/interface/app/conversation'
 /** Khai báo các dữ liệu từ store */
 const commonStore = useCommonStore()
 const conversationStore = useConversationStore()
-const pageStore = usePageStore()
 const $toast = container.resolve(Toast)
 const orgStore = useOrgStore()
 const $external_site = container.resolve(ExternalSite)
-/** Khai báo props */
-const props = defineProps<{
-  conversation?: ConversationInfo
-}>()
-
-/** dữ liệu hội thoại */
-const actual_conversation = computed(
-  () => props.conversation || conversationStore.select_conversation
-)
 
 /**tham chiếu đến div danh sách nhãn */
 const ref_labels = ref<HTMLDivElement>()
@@ -112,20 +102,12 @@ class Main {
   ) {}
 
   /**kiểm tra label có được chọn hay không */
-  private isActiveLabel(
-    label_id: string | undefined,
-    page_labels: Record<string, any> | undefined
-  ): number | undefined {
+  private isActiveLabel(label_id?: string): number | undefined {
     /** nếu không có nhãn thì trả về false */
     if (!label_id) return undefined
-    if (!page_labels) return undefined
 
     /**trạng thái nhãn có được chọn hay không */
-    const selected_labels = actual_conversation.value?.label_id?.filter(
-      id => page_labels?.[id]
-    )
-
-    const iS_SELECT = selected_labels?.includes(label_id)
+    const iS_SELECT = conversationStore.getActiveLabelIds()?.includes(label_id)
 
     /** trả về trạng thái nhãn có được chọn hay không */
     return iS_SELECT ? 1 : undefined
@@ -141,14 +123,12 @@ class Main {
   /**khởi tạo danh sách nhãn của trang của hội thoại đang chọn */
   getLabels(): void {
     /**dữ liệu nhãn gốc của trang */
-    const MAP_LABELS = pageStore.getLabels(
-      actual_conversation.value?.fb_page_id
-    )
+    const MAP_LABELS = conversationStore.getLabels()
 
     /** tiêm trạng thái nhãn được chọn */
-    map(MAP_LABELS || {}, (label: ICustomLabel) => {
+    map(MAP_LABELS, (label: ICustomLabel) => {
       /** đánh dấu các nhãn đã được chọn */
-      label.is_active = this.isActiveLabel(label._id, MAP_LABELS)
+      label.is_active = this.isActiveLabel(label._id)
 
       /** chuyển description sang dạng số */
       label.description = Number(label?.description)
@@ -178,15 +158,15 @@ class Main {
   async toggleLabel(label_id: string) {
     /** nếu không có trang hoặc khách hàng nào được chọn thì không thực hiện */
     if (
-      !actual_conversation.value?.fb_page_id ||
-      !actual_conversation.value?.fb_client_id
+      !conversationStore.select_conversation?.fb_page_id ||
+      !conversationStore.select_conversation?.fb_client_id
     )
       return
 
     /** thực hiện thay đổi nhãn */
     await new N4SerivceAppOneConversation(
-      actual_conversation.value?.fb_page_id as string,
-      actual_conversation.value?.fb_client_id as string
+      conversationStore.select_conversation?.fb_page_id as string,
+      conversationStore.select_conversation?.fb_client_id as string
     ).toggleLabel(label_id)
   }
 }
@@ -197,12 +177,12 @@ onMounted(() => $main.getLabels())
 
 /** lấy danh sách nhãn khi thay đổi khách hàng */
 watch(
-  () => actual_conversation.value?.fb_client_id,
+  () => conversationStore.select_conversation?.fb_client_id,
   () => $main.getLabels()
 )
 /** lấy danh sách nhãn khi có thay đổi nhãn ở máy khác */
 watch(
-  () => actual_conversation.value?.label_id,
+  () => conversationStore.select_conversation?.label_id,
   () => $main.getLabels()
 )
 
