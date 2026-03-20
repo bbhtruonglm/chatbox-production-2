@@ -43,8 +43,7 @@
       <SparklesIcon
         v-if="
           calcStatus?.(source) &&
-          getPageInfo(source?.fb_page_id)?.is_active_ai_agent &&
-          (source?.conversation_type === 'POST' ? source?.ai_description : true)
+          getPageInfo(source?.fb_page_id)?.is_active_ai_agent
         "
         class="size-3"
         v-tooltip.bottom="$t('AI đang bật')"

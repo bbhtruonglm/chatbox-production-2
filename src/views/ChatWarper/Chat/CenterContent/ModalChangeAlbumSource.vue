@@ -401,8 +401,6 @@ function confirmSelection() {
     local_page_ids.value = [DEFAULT_ID]
   }
 
-  console.log(local_page_ids.value, '✅ local_page_ids normalized')
-
   // ✅ Emit ra ngoài và đóng modal
   emit('update:page_ids', [...local_page_ids.value])
   modal_change_quick_answer_ref.value?.toggleModal()

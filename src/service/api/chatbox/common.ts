@@ -46,6 +46,7 @@ export const chatbox = (
       // format lại response trước khi return
       if (e) return proceed(e)
       if (r?.mean) return proceed(r.mean)
+      if (r?.payload) return proceed(r.payload)
       if (r?.message) return proceed(r.message)
       if (r?.data || r?.data === 0) return proceed(null, r.data)
 

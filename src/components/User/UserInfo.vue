@@ -37,10 +37,24 @@
                 {{ $t('v1.view.main.dashboard.org.pay.account') }}
               </div>
               <div class="flex items-center gap-3">
-                <StaffAvatar
-                  :id="chatbotUserStore.chatbot_user?.user_id"
-                  class="rounded-oval w-11 h-11"
-                />
+                <div class="relative">
+                  <StaffAvatar
+                    :id="chatbotUserStore.chatbot_user?.user_id"
+                    class="rounded-oval w-11 h-11"
+                  />
+                  <div
+                    @click="$main.handleUpload()"
+                    class="p-1 rounded-full bg-slate-300 absolute -bottom-1 -right-1 cursor-pointer"
+                  >
+                    <CameraIcon class="size-4" />
+                  </div>
+                  <div
+                    v-if="is_loading_avatar"
+                    class="absolute top-0 left-0 rounded-oval w-11 h-11 bg-black/30 flex items-center justify-center"
+                  >
+                    <Loading class="fill-blue-700 text-white !size-5" />
+                  </div>
+                </div>
                 <div>
                   <div class="text-sm font-semibold">
                     {{ chatbotUserStore.chatbot_user?.full_name }}
@@ -169,6 +183,10 @@
 import { ref } from 'vue'
 import { useChatbotUserStore } from '@/stores'
 import { useI18n } from 'vue-i18n'
+import { container } from 'tsyringe'
+import { UploadFile } from '@/utils/helper/Upload'
+import { error } from '@/utils/decorator/Error'
+import { Toast } from '@/utils/helper/Alert/Toast'
 
 import StaffAvatar from '@/components/Avatar/StaffAvatar.vue'
 import Item from '@/components/User/UserInfo/Item.vue'
@@ -186,10 +204,18 @@ import UserIcon from '@/components/Icons/User.vue'
 import CogBoldIcon from '@/components/Icons/CogBold.vue'
 import UserCircleIcon from '@/components/Icons/UserCircle.vue'
 import TagIcon from '@/components/Icons/Tag.vue'
+import { CameraIcon } from 'lucide-vue-next'
+import Loading from '@/components/Icons/Loading.vue'
+import { loading } from '@/utils/decorator/Loading'
+import { N4SerivceAppUser } from '@/utils/api/N4Service/User'
 
 const { t: $t } = useI18n()
 
 const $emit = defineEmits(['close_modal'])
+
+const $upload = container.resolve(UploadFile)
+const $toast = container.resolve(Toast)
+const $user = container.resolve(N4SerivceAppUser)
 
 const chatbotUserStore = useChatbotUserStore()
 
@@ -206,6 +232,9 @@ const SELECT_LABEL_TYPE = {
 /**ẩn hiện modal */
 const is_open = ref(false)
 
+/** cờ check loading tải ảnh đại diện */
+const is_loading_avatar = ref(false)
+
 /**ẩn hiện modal */
 function toggleModal() {
   // toggle modal
@@ -214,6 +243,45 @@ function toggleModal() {
   // bắn sự kiện ra ngoài khi modal đã tắt
   if (!is_open.value) $emit('close_modal')
 }
+
+class Main {
+  /** hàm update avatar */
+  handleUpload() {
+    // mở cửa sổ chọn file
+    $upload.exec(
+      // gửi file ra ngoài
+      files => {
+        /**file hình ảnh */
+        const FILE = files?.[0]
+
+        // nếu không có file thì thôi
+        if (!FILE) return
+
+        // tải lên ảnh đại diện của nhân sự
+        this.uploadOrgAvatar(FILE)
+      },
+      // chỉ cho chọn 1 file
+      false,
+      // chỉ chọn file ảnh
+      'image/*',
+    )
+  }
+
+  /**upload ảnh avt mới của nhân sự */
+  @loading(is_loading_avatar)
+  @error($toast)
+  async uploadOrgAvatar(file: File) {
+    /** link ảnh của nhân sự */
+    const AVATAR = await $user.uploadUserAvatar(file)
+
+    /** dữ liệu nhân sự được cập nhật */
+    await $user.updateUserInfo({
+      avatar: AVATAR,
+    })
+  }
+}
+
+const $main = new Main()
 
 // public chức năng ẩn hiện modal để có thể được gọi từ bên ngoài component
 defineExpose({ toggleModal })

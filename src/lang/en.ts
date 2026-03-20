@@ -328,6 +328,8 @@ const source: Language = {
   'Đổi gói': 'Change package',
   'Ngày hết hạn': 'Expiry date',
   'Gói hiện tại': 'Current package',
+  'File vượt quá dung lượng cho phép': 'File size exceeds the allowed limit',
+  'Vui lòng chuyển sang tài khoản TikTok Business': 'Please switch to TikTok Business account',
 
   v1: {
     common: {

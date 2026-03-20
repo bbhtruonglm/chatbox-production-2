@@ -21,6 +21,7 @@ declare global {
       n5_app_v1: string
       n5_app_v2: string
       n6_static: string
+      n6_static_v2: string
       /**api quản lý analytic v2 */
       n9_analytic_v2: string
       /**api quản lý tổ chức */

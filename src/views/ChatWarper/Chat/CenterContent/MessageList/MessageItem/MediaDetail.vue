@@ -10,13 +10,17 @@
     </template>
     <template v-slot:body>
       <div
-        class="bg-white rounded-md p-2 gap-3 grid grid-cols-2 relative w-full h-full"
+        class="bg-white rounded-md p-2 gap-3 grid relative w-full h-full"
+        :class="{
+          'grid-cols-2': is_check_ai,
+        }"
       >
         <div class="flex flex-col gap-5 overflow-hidden cursor-zoom-in">
           <Item
             @click="$main.previewImage()"
             :data_source="input.data_source"
             :url="input.url"
+            :message="message"
           />
           <div
             v-if="gt(input.message?.message_attachments?.length, 1)"
@@ -54,6 +58,7 @@
         </div>
         <div
           class="h-full overflow-hidden border rounded-lg py-2 px-3 flex flex-col gap-2.5 text-sm"
+          v-if="is_check_ai"
         >
           <div
             class="bg-slate-200 text-xs font-medium py-1 px-2 rounded flex-shrink-0"
@@ -92,7 +97,7 @@
         <Teleport to="body">
           <PreviewImage
             v-if="is_preview_image"
-            :image_url="input?.data_source?.image?.url"
+            :image_url="input?.url"
             :close="$main.closePreviewImage"
           />
         </Teleport>
@@ -117,7 +122,7 @@
   </Modal>
 </template>
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { container } from 'tsyringe'
 import { Clipboard } from '@/utils/helper/Clipboard'
 import { gt } from 'lodash'
@@ -168,6 +173,15 @@ const is_expand = ref<boolean>()
 /** xem trước ảnh */
 const is_preview_image = ref<boolean>(false)
 
+/** cờ check có mô tả AI hay không */
+const is_check_ai = computed(() => {
+  return Boolean(
+    input.value.data_source?.ocr?.description ||
+    input.value.data_source?.ocr?.original_text ||
+    input.value.data_source?.list_button?.length,
+  )
+})
+
 class Main {
   /**
    * @param SERVICE_COUNT_HIDDEN_ITEM dịch vụ đếm số phần tử bị ẩn
@@ -176,14 +190,14 @@ class Main {
    */
   constructor(
     private readonly SERVICE_COUNT_HIDDEN_ITEM: ICounHiddenItem = container.resolve(
-      CountHiddenItem
+      CountHiddenItem,
     ),
     private readonly SERVICE_WINDOW_ACTION: IWindowAction = container.resolve(
-      WindowAction
+      WindowAction,
     ),
     private readonly SERVICE_CREATE_DATA_SOURCE: ICreateDataSource = container.resolve(
-      CreateDataSource
-    )
+      CreateDataSource,
+    ),
   ) {}
 
   /**lấy dữ liệu của file */
@@ -213,7 +227,7 @@ class Main {
     // đếm số phần tử bị ẩn
     count_hidden_item.value = await this.SERVICE_COUNT_HIDDEN_ITEM.exec(
       'button',
-      ref_attachments.value
+      ref_attachments.value,
     )
   }
   /**mở modal xem chi tiết file */
@@ -252,7 +266,7 @@ const $main = new Main()
 //  nếu chọn lại item của danh sách từ bên ngoài, thì map lại chính xác
 watch(
   () => $props.index,
-  index => $main.changeAttachment(index)
+  index => $main.changeAttachment(index),
 )
 
 // xuất phương thức

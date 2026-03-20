@@ -75,6 +75,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RecycleScroller } from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import { listenerEventBus } from '@/event'
 
 import Loading from '@/components/Loading.vue'
 import ConversationItem from '@/views/ChatWarper/Chat/LeftBar/Conversation/ConversationItem.vue'
@@ -92,6 +93,7 @@ import {
   CalcSpecialPageConfigs,
   type ICalcSpecialPageConfigs,
 } from '@/utils/helper/Conversation/CalcSpecialPageConfigs'
+import type { Handler } from 'mitt'
 
 /**dữ liệu từ socket */
 interface CustomEvent extends Event {
@@ -135,11 +137,11 @@ class Main {
    */
   constructor(
     private readonly API_CONVERSATION = container.resolve(
-      N4SerivceAppConversation
+      N4SerivceAppConversation,
     ),
     private readonly SERVICE_CALC_SPECIAL_PAGE_CONFIGS: ICalcSpecialPageConfigs = container.resolve(
-      CalcSpecialPageConfigs
-    )
+      CalcSpecialPageConfigs,
+    ),
   ) {}
 
   /**
@@ -211,10 +213,10 @@ class Main {
         OVERWRITE_FILTER.staff_id?.push(chatbotUserStore.chatbot_user?.user_id)
 
       /** thêm id cũ, tránh lỗi */
-      if (chatbotUserStore.chatbot_user?.fb_staff_id)
-        OVERWRITE_FILTER.staff_id?.push(
-          chatbotUserStore.chatbot_user?.fb_staff_id
-        )
+      // if (chatbotUserStore.chatbot_user?.fb_staff_id)
+      //   OVERWRITE_FILTER.staff_id?.push(
+      //     chatbotUserStore.chatbot_user?.fb_staff_id,
+      //   )
     }
 
     /** dữ liệu hội thoại */
@@ -231,7 +233,7 @@ class Main {
         },
         40,
         SORT,
-        after.value
+        after.value,
       )
     } catch (e) {
       throw e
@@ -297,7 +299,7 @@ class Main {
       /** thêm id cũ, tránh lỗi */
       if (chatbotUserStore.chatbot_user?.fb_staff_id)
         OVERWRITE_FILTER.staff_id?.push(
-          chatbotUserStore.chatbot_user?.fb_staff_id
+          chatbotUserStore.chatbot_user?.fb_staff_id,
         )
     }
 
@@ -321,19 +323,27 @@ class Main {
 
   /**xử lý socket conversation */
   onRealtimeUpdateConversation({ detail }: CustomEvent) {
-    /** Nếu đang clear hoặc đang chuyển hội thoại thì bỏ qua socket update */
-    if (
-      conversationStore.is_clearing_conversation ||
-      conversationStore.is_switching_conversation
-    ) {
-      return
-    }
+    // /** Nếu đang clear hoặc đang chuyển hội thoại thì bỏ qua socket update */
+    // if (
+    //   conversationStore.is_clearing_conversation ||
+    //   conversationStore.is_switching_conversation
+    // ) {
+    //   return
+    // }// ????
 
     /** nếu không có dữ liệu thì thôi */
     if (!detail) return
 
     /** nạp dữ liệu */
     let { conversation, event } = detail
+
+    // nếu page không được chọn thì thôi, hotfix lỗi bị nhảy dữ liệu từ data khác
+    if (
+      !pageStore.selected_page_list_info?.[conversation?.fb_page_id as string]
+        ?.page
+    )
+      return
+
     /**danh sách hội thoại */
     let conversation_list = conversationStore.conversation_list
 
@@ -358,8 +368,9 @@ class Main {
       SPECIAL_PAGE_CONFIG?.is_only_visible_client_of_staff &&
       /** dùng cả id cũ và mới */
       !(
-        conversation?.user_id === chatbotUserStore.chatbot_user?.user_id ||
-        conversation?.fb_staff_id === chatbotUserStore.chatbot_user?.fb_staff_id
+        conversation?.user_id === chatbotUserStore.chatbot_user?.user_id 
+        // ||
+        // conversation?.fb_staff_id === chatbotUserStore.chatbot_user?.fb_staff_id
       )
     )
       return
@@ -490,14 +501,14 @@ class Main {
     set(
       conversationStore.select_conversation,
       ['staff_read', chatbotUserStore.chatbot_user?.user_id],
-      new Date().getTime()
+      new Date().getTime(),
     )
   }
   /**đọc danh sách hội thoại lần đầu tiên */
   async loadConversationFirstTime(
     is_first_time?: boolean,
     is_count_conversation?: boolean,
-    is_pick_first?: boolean
+    is_pick_first?: boolean,
   ) {
     // nếu có đếm hội thoại thì reset các giá trị
     if (is_count_conversation) {
@@ -565,9 +576,6 @@ class Main {
       user_id = ($route.query?.u || $route.query?.user_id) as string
     }
 
-    /** nếu id page của hội thoại không được chọn thì thôi */
-    if (page_id && !pageStore.selected_page_id_list?.[page_id]) return
-
     /** key của hội thoại */
     let data_key = `${page_id}_${user_id}`
 
@@ -576,8 +584,14 @@ class Main {
       conversationStore.conversation_list,
       (conversation, key) => {
         return data_key === key
-      }
+      },
     )
+
+    /** nếu id page của hội thoại không được chọn thì thôi */
+    if (page_id && !pageStore.selected_page_id_list?.[page_id]) {
+      this.handleSelectConversation(target_conversation)
+      return
+    }
 
     /**dữ liệu hội thoại tìm được */
     let conversation: ConversationInfo | undefined
@@ -629,7 +643,7 @@ class Main {
 
               conversation = r?.conversation?.[data_key]
               cb()
-            }
+            },
           ),
         /** * thêm hội thoại vào danh sách và pick chọn */
         (cb: CbError) => {
@@ -654,26 +668,32 @@ class Main {
         },
       ],
       e => {
-        /** nếu không tìm thấy thì lấy hội thoại đầu tiên */
-        if (!target_conversation) {
-          target_conversation = map(conversationStore.conversation_list)?.[0]
-
-          /** đẩy id lên param */
-          setParamChat(
-            $router,
-            target_conversation?.fb_page_id,
-            target_conversation?.fb_client_id
-          )
-        }
-
-        selectConversation(
-          target_conversation,
-          /** nếu đang tìm kiếm thì không tự động select input chat nữa */
-          !!conversationStore.option_filter_page_data?.search
-        )
-      }
+        this.handleSelectConversation(target_conversation)
+      },
     )
   }
+
+  /** xử lý chọn conversation */
+  handleSelectConversation(target_conversation: ConversationInfo | undefined) {
+    /** nếu không tìm thấy thì lấy hội thoại đầu tiên */
+    if (!target_conversation) {
+      target_conversation = map(conversationStore.conversation_list)?.[0]
+
+      /** đẩy id lên param */
+      setParamChat(
+        $router,
+        target_conversation?.fb_page_id,
+        target_conversation?.fb_client_id,
+      )
+    }
+
+    selectConversation(
+      target_conversation,
+      /** nếu đang tìm kiếm thì không tự động select input chat nữa */
+      !!conversationStore.option_filter_page_data?.search,
+    )
+  }
+
   /**load thêm hội thoại khi lăn chuột xuống cuối */
   loadMoreConversation($event: UIEvent) {
     /**sẽ scroll khi đã đi được số phần trăm trên độ dài  */
@@ -717,10 +737,10 @@ onMounted(() => {
   conversationStore.is_loading_list = true
 
   /** lắng nghe sự kiện socket */
-  window.addEventListener(
-    'chatbox_socket_conversation',
-    $main.onRealtimeUpdateConversation.bind($main)
-  )
+  // window.addEventListener(
+  //   'chatbox_socket_conversation',
+  //   $main.onRealtimeUpdateConversation.bind($main),
+  // )
 
   /** lưu thời gian render hiện tại */
   mounted_time.value = new Date()
@@ -734,14 +754,20 @@ onUnmounted(() => {
   conversationStore.conversation_list = {}
 
   /** xoá sự kiện socket */
-  window.removeEventListener(
-    'chatbox_socket_conversation',
-    $main.onRealtimeUpdateConversation.bind($main)
-  )
+  // window.removeEventListener(
+  //   'chatbox_socket_conversation',
+  //   $main.onRealtimeUpdateConversation.bind($main),
+  // )
 
   /** xoá sự kiện focus vào tab */
   window.removeEventListener('focus', $main.autoRefreshPage.bind($main))
 })
+
+// lắng nghe sự kiện socket hội thoại, tạm thời ép kiểu, sau này ok sẽ sửa lại
+listenerEventBus(
+  'chatbox_socket_conversation',
+  $main.onRealtimeUpdateConversation.bind($main) as Handler<unknown>,
+)
 
 /** khi thay đổi giá trị lọc tin nhắn(trừ field conversation_type) thì load lại dữ liệu */
 watch(
@@ -749,19 +775,19 @@ watch(
   (new_val, old_val) => {
     $main.loadConversationFirstTime(true, true, true)
   },
-  { deep: true }
+  { deep: true },
 )
 
 /** lắng nghe thay đổi loại hội thoại */
 watch(
   () => conversationStore.option_filter_page_data?.conversation_type,
-  () => $main.loadConversationFirstTime(true, false, true)
+  () => $main.loadConversationFirstTime(true, false, true),
 )
 
 /** khi có data page được chọn thì tính toán danh sách conversation */
 watch(
   () => pageStore.selected_page_list_info,
-  () => $main.loadConversationFirstTime(true, true)
+  () => $main.loadConversationFirstTime(true, true),
 )
 /** khi thay đổi hội thoại, nếu hội thoại trước đó còn tin nhắn chưa đọc thì reset */
 watch(
@@ -797,9 +823,9 @@ watch(
       },
       (e, r) => {
         if (e) return toastError(e)
-      }
+      },
     )
-  }
+  },
 )
 
 defineExpose({

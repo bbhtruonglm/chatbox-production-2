@@ -24,15 +24,17 @@
 
       <!-- Nội dung tin nhắn (làm mờ khi đang thu hồi hoặc đã thu hồi) -->
       <div
-        class="col-start-1 row-start-1"
+        class="col-start-1 row-start-1 flex flex-col max-w-full min-w-0"
         :class="{
           'opacity-60 pointer-events-none': message.is_undo,
+          'items-end': message_type !== 'client' && message_type !== 'group',
         }"
       >
         <ReplyMessage
           v-if="reply_message"
           :message="reply_message"
         />
+        
         <AttachmentMessage
           v-if="isSpecialCase()"
           :message="message"

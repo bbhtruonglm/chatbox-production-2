@@ -196,7 +196,7 @@ watch(
   () => $props.data_source,
   value => {
     // -> true: tức là tin nhắn mới được xử lý AI -> đóng content
-    console.log(value, 'value')
+    // console.log(value, 'value')
   }
 )
 

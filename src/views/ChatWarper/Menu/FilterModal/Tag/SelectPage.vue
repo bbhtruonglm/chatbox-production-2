@@ -1,4 +1,5 @@
 <template>
+  <div ref="filter_dropdown_ref" class="relative w-full">
     <div class="border w-full px-3 py-2 rounded-lg flex items-center justify-between cursor-pointer" @click="toggle">
         <p v-if="!page_selected?.page?.name">
             {{ $t('v1.view.main.dashboard.chat.filter.label.all_page') }}
@@ -6,8 +7,8 @@
         <p v-if="page_selected?.page?.name" class="w-[90%] truncate">{{ page_selected.page.name }}</p>
         <img :src="DownIcon" class="w-3" alt="">
     </div>
-    <Dropdown ref="filter_dropdown_ref" position="BOTTOM" height="fit-content">
-        <div 
+    <div v-if="is_open" class="absolute max-h-96 overflow-auto bg-white border rounded-lg w-full p-1 mt-1">
+      <div 
             @click="selectPage()"
             class="cursor-pointer flex items-center mb-1 hover:bg-orange-100 rounded-lg p-1"
         >
@@ -26,22 +27,21 @@
             />
             <p class="text-[14px] ml-1 w-[90%] truncate">{{ page_info.page?.name }}</p>
         </div>
-    </Dropdown>
+    </div>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { usePageStore } from '@/stores'
 
 // * Components
-import Dropdown from '@/components/Dropdown.vue'
 import PageAvatar from '@/components/Avatar/PageAvatar.vue'
 
 // * Icon
 import DownIcon from '@/assets/icons/arrow-down.svg'
 
 // * Interface
-import type { ComponentRef } from '@/service/interface/vue'
 import type { PageList, PageData } from '@/service/interface/app/page'
 
 const $props = withDefaults(defineProps<{
@@ -56,14 +56,28 @@ const page_selected = ref<PageData>()
 /** Danh sách page đã chọn */
 const pages = ref<PageList>(pageStore.selected_page_list_info)
 /**ref của dropdown */
-const filter_dropdown_ref = ref<ComponentRef>()
+const filter_dropdown_ref = ref<HTMLElement>()
+
+  /** ẩn hiện dropdown */
+const is_open = ref(false)
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 /** Ẩn hiện dropdown */
-function toggle($event: MouseEvent) {
-    filter_dropdown_ref.value?.toggleDropdown($event)
+function toggle() {
+    is_open.value = !is_open.value
 }
 /** Chọn page */
 function selectPage(page?: PageData, page_id?: string) {
+    // đóng dropdown
+    is_open.value = false
+
     // Trường hợp chọn tất cả page
     if(!page) {
         page_selected.value = undefined
@@ -73,7 +87,17 @@ function selectPage(page?: PageData, page_id?: string) {
     // Trường hợp chọn 1 page
     page_selected.value = page
     $props.select_page(page_id)
-    filter_dropdown_ref.value?.toggleDropdown()
+}
+
+/** hàm xử lý khi click ra ngoài dropdown */
+function handleClickOutside(event: MouseEvent) {
+  // nếu không có thì thôi
+  if (!filter_dropdown_ref.value) return
+
+  // nếu có thì check xem click bên trong hay bên ngoài
+  if (!filter_dropdown_ref.value.contains(event.target as Node)) {
+    is_open.value = false
+  }
 }
 
 </script>

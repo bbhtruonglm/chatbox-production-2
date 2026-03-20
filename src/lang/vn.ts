@@ -127,6 +127,8 @@ const source: Language = {
   'Ngày hết hạn': 'Ngày hết hạn',
   'Gói hiện tại': 'Gói hiện tại',
   'Không hiện lại bảng này': 'Không hiện lại bảng này',
+  'File vượt quá dung lượng cho phép': 'File vượt quá dung lượng cho phép',
+  'Vui lòng chuyển sang tài khoản TikTok Business': 'Vui lòng chuyển sang tài khoản TikTok Business',
 
   v1: {
     common: {

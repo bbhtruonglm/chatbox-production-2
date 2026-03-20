@@ -54,7 +54,6 @@ export const usePageStore = defineStore('page_store', () => {
       /** dữ liệu các page sau khi lọc */
       let result = all_page_list.value
 
-      console.log(result, 'result')
       // lọc theo nền tảng đang chọn
       result = filterPageByPlatform(result, selectPageStore.current_menu)
       // lọc theo tìm kiếm

@@ -91,18 +91,14 @@ const expandAndFocus = async () => {
 const conversationStore = useConversationStore()
 /** Theo dõi data trong store */
 watch(
-  () => conversationStore.select_conversation?.data_key,
-  (newVal, oldVal) => {
-    /** Nếu id thay đổi thì mới cập nhật */
-    if (newVal !== oldVal) {
-      /** Gán giá trị */
-      description.value =
-        conversationStore.select_conversation?.ai_description || ''
-      /** Reset trạng thái mở rộng */
-      is_expanded.value = false
-    }
+  () => conversationStore.select_conversation,
+  newVal => {
+    /** Gán giá trị */
+    description.value = newVal?.ai_description || ''
+    /** Reset trạng thái mở rộng */
+    is_expanded.value = false
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 )
 
 /** Hủy bỏ chỉnh sửa */
@@ -118,59 +114,35 @@ const client_id = computed(
   () => conversationStore.select_conversation?.fb_client_id
 )
 /** Gọi API lưu dữ liệu */
-/** Gọi API lưu dữ liệu */
-/** Gọi API lưu dữ liệu */
 const save = async () => {
-  /** Capture lại hội thoại và nội dung tại thời điểm bấm lưu */
-  const current_conversation = conversationStore.select_conversation
-  const current_description = description.value
-
-  if (!current_conversation?.fb_page_id || !current_conversation?.fb_client_id)
-    return
-
-  /** Payload gửi đi */
-  const payload = {
-    page_id: current_conversation.fb_page_id,
-    client_id: current_conversation.fb_client_id,
-    ai_description: current_description,
-  }
-
   try {
     /** gọi api cập nhật tên khách hàng */
     await new Promise((resolve, reject_promise) => {
-      update_info_conversation(payload, (error, response) => {
-        /** Nếu lỗi thì reject */
-        if (error) reject_promise(error)
-        /** Nếu thành công thì resolve */ else resolve(response)
-      })
+      /** nếu chưa có id của trang hoặc khách hàng thì bỏ qua */
+      if (!page_id.value || !client_id.value) return
+
+      update_info_conversation(
+        {
+          page_id: page_id.value,
+          client_id: client_id.value,
+          ai_description: description.value,
+        },
+        (error, response) => {
+          /** Nếu lỗi thì reject */
+          if (error) reject_promise(error)
+          /** Nếu thành công thì resolve */ else resolve(response)
+        }
+      )
     })
 
-    /** 1. Cập nhật object đã capture (để chắc chắn) */
-    current_conversation.ai_description = payload.ai_description
-
-    /** 2. Cập nhật trong danh sách hội thoại của store (QUAN TRỌNG: để đồng bộ khi chuyển qua lại) */
-    if (
-      current_conversation.data_key &&
-      conversationStore.conversation_list[current_conversation.data_key]
-    ) {
-      conversationStore.conversation_list[
-        current_conversation.data_key
-      ].ai_description = payload.ai_description
+    /** Cập nhật lại description trong store để đồng bộ dữ liệu */
+    if (conversationStore.select_conversation) {
+      /** Gán giá trị mới cho store */
+      conversationStore.select_conversation.ai_description = description.value
     }
 
-    /** 3. Check conversation đang được chọn hiện tại và cập nhật nếu khớp  */
-    if (
-      conversationStore.select_conversation?.fb_page_id === payload.page_id &&
-      conversationStore.select_conversation?.fb_client_id === payload.client_id
-    ) {
-      conversationStore.select_conversation.ai_description =
-        payload.ai_description
-
-      /** Đang ở đúng conversation thì tắt form */
-      is_expanded.value = false
-    }
-
-    console.log('Đã lưu:', payload.ai_description)
+    is_expanded.value = false
+    console.log('Đã lưu:', description.value)
   } catch (err) {
     console.error('Lỗi khi lưu:', err)
   }

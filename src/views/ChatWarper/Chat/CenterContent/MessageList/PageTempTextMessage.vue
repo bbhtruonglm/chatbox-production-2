@@ -1,5 +1,6 @@
 <template>
-  <div class="flex flex-col">
+  <div class="flex flex-col items-end"
+  >
     <!-- Reply Message bên ngoài message content -->
     <ReplyMessage
       v-if="snap_replay_message"

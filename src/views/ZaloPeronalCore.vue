@@ -356,6 +356,7 @@ import type { FacebookCommentPost } from '@/service/interface/app/post'
 import type { StaffSocket } from '@/service/interface/app/staff'
 import type { IAlert } from '@/utils/helper/Alert/type'
 import { N4SerivceAppOneConversation } from '@/utils/api/N4Service/Conversation'
+import { dispatchEventBus } from '@/event'
 
 const orgStore = useOrgStore()
 const pageStore = usePageStore()
@@ -416,7 +417,7 @@ const selected_page_id = ref<string>()
 const selected_page_info = computed(
   () =>
     zlp_oss.value?.find(zlp_os => zlp_os?.page_id === selected_page_id.value)
-      ?.page_info
+      ?.page_info,
 )
 
 /** danh sách các trang zalo của tổ chức hiện tại */
@@ -456,7 +457,7 @@ class Main {
    * @param API gọi API
    */
   constructor(
-    private readonly API = container.resolve(N4SerivceAppZaloPersonal)
+    private readonly API = container.resolve(N4SerivceAppZaloPersonal),
   ) {}
 
   /**gửi lời mời kết bạn */
@@ -518,7 +519,7 @@ class Main {
     zlp_oss.value = OSS.filter(
       os =>
         os?.page_info?.type === 'ZALO_PERSONAL' &&
-        !os?.page_info?.is_disconnected
+        !os?.page_info?.is_disconnected,
     )
 
     /** id trang zalo lưu trong local storage */
@@ -541,7 +542,7 @@ class Main {
       $env.host.n3_socket,
       zlp_oss.value?.map(os => os.page_id || ''),
       chatbotUserStore.chatbot_user?.fb_staff_id || '',
-      this.handleSocketEvent
+      this.handleSocketEvent,
     )
   }
 
@@ -586,18 +587,24 @@ class Main {
     // gửi thông điệp đến component xử lý hiển thị danh sách tin nhắn
     if (size(message)) {
       // socket tin nhắn mới cho các component
-      window.dispatchEvent(
-        new CustomEvent('chatbox_socket_message', { detail: message })
-      )
+      dispatchEventBus('chatbox_socket_message', { detail: message })
+      // window.dispatchEvent(
+      //   new CustomEvent('chatbox_socket_message', { detail: message })
+      // )
     }
 
     // gửi thông điệp cập nhật tin nhắn đã có
-    if (size(update_message))
-      window.dispatchEvent(
-        new CustomEvent('chatbox_socket_update_message', {
-          detail: update_message,
-        })
-      )
+    if (size(update_message)) {
+      dispatchEventBus('chatbox_socket_update_message', {
+        detail: update_message,
+      })
+
+      // window.dispatchEvent(
+      //   new CustomEvent('chatbox_socket_update_message', {
+      //     detail: update_message,
+      //   })
+      // )
+    }
   }
 
   /** lấy thông tin của các page zalo */
@@ -614,7 +621,7 @@ class Main {
     const PAGES = await new N4SerivceAppPage().getPageInfoToChat(
       query_string_data.value.org_id,
       SELECTED_PAGE_IDS,
-      true
+      true,
     )
 
     pageStore.selected_page_list_info = PAGES
@@ -692,7 +699,7 @@ class Main {
           page_id: selected_page_id.value,
         },
       },
-      '*'
+      '*',
     )
   }
 
@@ -714,7 +721,7 @@ class Main {
     // lưu dữ liệu mới xuống localstorage
     $local_storage.setItem(
       'selected_zalo_page_org_id_map',
-      JSON.stringify(selected_zalo_page_org_id_map)
+      JSON.stringify(selected_zalo_page_org_id_map),
     )
   }
 
@@ -723,7 +730,7 @@ class Main {
     try {
       /** dữ liệu ánh xạ trang zalo được chọn và các tổ chức theo id được lưu trong localstorage ở dạng string */
       const SELECTED_ZALO_PAGE_ORG_ID_MAP_STR = $local_storage.getItem(
-        'selected_zalo_page_org_id_map'
+        'selected_zalo_page_org_id_map',
       )
 
       // nếu không có dữ liệu thì trả về object rỗng
@@ -731,7 +738,7 @@ class Main {
 
       /** dữ liệu sau khi parse thành công */
       const SELECTED_ZALO_PAGE_ORG_ID_MAP = JSON.parse(
-        SELECTED_ZALO_PAGE_ORG_ID_MAP_STR
+        SELECTED_ZALO_PAGE_ORG_ID_MAP_STR,
       )
 
       // nếu không có thì trả về object rỗng
@@ -779,7 +786,7 @@ class Main {
           (e, r) => {
             /** id của hội thoại đầu tiên */
             const FIRST_KEY_CONVERSATION = Object.keys(
-              r?.conversation || {}
+              r?.conversation || {},
             )?.[0]
 
             /** lấy ra hội thoại đầu tiên */
@@ -788,12 +795,19 @@ class Main {
             // nếu có thì trả về không thì báo lỗi
             if (CONVERSATION) {
               resolve(CONVERSATION)
-            } else {
-              reject()
             }
-          }
+            // nếu không tìm thấy hội thoại nào thì init 1 hội thoại để gửi được tin nhắn
+            else {
+              // reject()
+              resolve({
+                fb_client_id: client_id.value,
+                fb_page_id: selected_page_id.value || '',
+                last_message_type: 'page',
+              })
+            }
+          },
         )
-      }
+      },
     )
   }
 
@@ -882,7 +896,7 @@ class Main {
     // gọi api cập nhật tên khách hàng
     await new N4SerivceAppOneConversation(
       selected_page_id.value,
-      client_id.value
+      client_id.value,
     ).updateClientName(alias_name.value)
 
     // nếu không có hội thoại thì thôi
@@ -957,7 +971,7 @@ watch(
       await nextTick()
       search_input.value?.focus()
     }
-  }
+  },
 )
 
 watch(
@@ -971,7 +985,7 @@ watch(
           view: view.value,
         },
       },
-      '*'
+      '*',
     )
 
     nextTick(() => {
@@ -979,7 +993,7 @@ watch(
       if (view.value === 'FRIEND_REQUEST') {
         // khởi tạo nội dung tin nhắn
         $input_service?.setInputText(
-          `Xin chào, mình là ${selected_page_info.value?.name}. Kết bạn với mình nhé! `
+          `Xin chào, mình là ${selected_page_info.value?.name}. Kết bạn với mình nhé! `,
         )
         // không cho phép gửi tin nhắn
         messageStore.is_can_send_message = false
@@ -993,6 +1007,6 @@ watch(
       // tắt cờ đang gõ
       commonStore.is_typing = false
     })
-  }
+  },
 )
 </script>

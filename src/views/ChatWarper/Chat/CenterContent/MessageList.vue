@@ -30,7 +30,7 @@
       :id="messageStore.list_message_id"
       class="pt-14 pb-5 pl-2 pr-5 gap-1 flex flex-col h-full overflow-hidden overflow-y-auto bg-[#0015810f] rounded-b-xl"
     >
-      <div
+      <!-- <div
         v-if="is_loading && messageStore.list_message?.length"
         class="flex flex-col gap-4 pt-4 pb-2 pl-2 pr-5 transition-all"
       >
@@ -51,7 +51,7 @@
             ></div>
           </div>
         </div>
-      </div>
+      </div> -->
       <!-- <HeaderChat /> -->
       <div
         v-for="(message, index) of show_list_message"
@@ -68,17 +68,13 @@
         <div
           :class="{
             'py-2': ['client', 'page', 'note', 'group'].includes(
-              message.message_type
+              message.message_type,
             ),
           }"
           class="flex gap-1 relative"
         >
           <div
-            v-if="
-              (message.message_type === 'client' && !message.ad_id) ||
-              message.message_type === 'group' ||
-              message.fb_post_id
-            "
+            v-if="isClientMessage(message)"
             class="flex-shrink-0"
           >
             <ClientAvatar
@@ -89,16 +85,14 @@
           </div>
           <div
             :class="{
-              'items-end':
-                ['page', 'note'].includes(message.message_type) ||
-                message.ad_id,
+              'items-end': isFromCurrentUser(message),
             }"
             class="relative flex flex-col flex-grow min-w-0"
           >
             <MessageItem
               v-if="
                 ['client', 'activity', 'page', 'note', 'group'].includes(
-                  message.message_type
+                  message.message_type,
                 ) && !message.ad_id
               "
               :message="message"
@@ -142,9 +136,7 @@
           </div>
           <PageStaffAvatar
             :message
-            v-if="
-              ['page', 'note'].includes(message.message_type) || message.ad_id
-            "
+            v-if="isFromCurrentUser(message)"
           />
           <ClientRead
             @change_last_read_message="visibleFirstClientReadAvatar"
@@ -161,8 +153,10 @@
         :key="message.temp_id"
         class="relative group flex flex-col gap-1 items-end py-2"
       >
-        <div class="message-size group relative flex gap-1 items-end">
+        <div class="w-fit group relative flex gap-1 items-end">
+          <!-- Hiển thị text message nếu có text -->
           <PageTempTextMessage
+            v-if="message.text"
             :text="message.text"
             :mentions="message.mentions"
             :snap_replay_message="message.snap_replay_message"
@@ -171,9 +165,19 @@
           <!-- :class="{
             'border border-red-500 rounded-lg': message.error,
           }" -->
+          <!-- Hiển thị attachment message nếu có attachments -->
+          <PageTempAttachmentMessage
+            v-else-if="message.message_attachments?.length"
+            :attachments="message.message_attachments"
+            :sizes="message.attachment_size"
+            :platform_type="select_conversation?.platform_type"
+            :class="{
+              'border border-red-500': message.error,
+            }"
+          />
           <StaffAvatar
             :id="chatbotUserStore.chatbot_user?.user_id"
-            class="w-6 h-6 rounded-oval flex-shrink-0"
+            class="w-8 h-8 rounded-oval flex-shrink-0"
           />
         </div>
         <SendStatus :is_error="message.error" />
@@ -182,50 +186,44 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { listenerEventBus } from '@/event'
+import { read_message } from '@/service/api/chatbox/n4-service'
+import { getPageInfo, scrollToBottomMessage } from '@/service/function'
+import { toastError } from '@/service/helper/alert'
+import { flow } from '@/service/helper/async'
 import {
+  useChatbotUserStore,
+  useCommonStore,
   useConversationStore,
   useMessageStore,
-  useCommonStore,
-  useChatbotUserStore,
   useOrgStore,
 } from '@/stores'
-import { flow } from '@/service/helper/async'
-import { read_message } from '@/service/api/chatbox/n4-service'
-import { toastError } from '@/service/helper/alert'
-import { getPageInfo, scrollToBottomMessage } from '@/service/function'
-import { debounce, findLastIndex, remove, size } from 'lodash'
+import { debounce, findLastIndex, remove, size, sortedIndexBy } from 'lodash'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
-import FullPost from '@/views/ChatWarper/Chat/CenterContent/MessageList/FullPost.vue'
-import Loading from '@/components/Loading.vue'
-import TimeSplit from '@/views/ChatWarper/Chat/CenterContent/MessageList/TimeSplit.vue'
-import UnsupportMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/UnsupportMessage.vue'
-import PageTempTextMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/PageTempTextMessage.vue'
-import SendStatus from '@/views/ChatWarper/Chat/CenterContent/MessageList/SendStatus.vue'
-import SystemMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/SystemMessage.vue'
-import ClientRead from '@/views/ChatWarper/Chat/CenterContent/MessageList/ClientRead.vue'
-import StaffRead from '@/views/ChatWarper/Chat/CenterContent/MessageList/StaffRead.vue'
-import AdMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/AdMessage.vue'
-import PostTemplate from '@/views/ChatWarper/Chat/CenterContent/MessageList/PostTemplate.vue'
-import FacebookPost from '@/views/ChatWarper/Chat/CenterContent/MessageList/FacebookPost.vue'
-import PageStaffAvatar from '@/views/ChatWarper/Chat/CenterContent/MessageList/PageStaffAvatar.vue'
 import ClientAvatar from '@/components/Avatar/ClientAvatar.vue'
 import StaffAvatar from '@/components/Avatar/StaffAvatar.vue'
-// import HeaderChat from '@/views/ChatWarper/Chat/CenterContent/MessageList/HeaderChat.vue'
+import ClientRead from '@/views/ChatWarper/Chat/CenterContent/MessageList/ClientRead.vue'
+import FullPost from '@/views/ChatWarper/Chat/CenterContent/MessageList/FullPost.vue'
+import PageStaffAvatar from '@/views/ChatWarper/Chat/CenterContent/MessageList/PageStaffAvatar.vue'
+import PageTempAttachmentMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/PageTempAttachmentMessage.vue'
+import PageTempTextMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/PageTempTextMessage.vue'
+import PostTemplate from '@/views/ChatWarper/Chat/CenterContent/MessageList/PostTemplate.vue'
+import SendStatus from '@/views/ChatWarper/Chat/CenterContent/MessageList/SendStatus.vue'
+import StaffRead from '@/views/ChatWarper/Chat/CenterContent/MessageList/StaffRead.vue'
+import SystemMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/SystemMessage.vue'
+import TimeSplit from '@/views/ChatWarper/Chat/CenterContent/MessageList/TimeSplit.vue'
 import MessageItem from '@/views/ChatWarper/Chat/CenterContent/MessageList/MessageItem.vue'
 import UnReadAlert from '@/views/ChatWarper/Chat/CenterContent/MessageList/UnReadAlert.vue'
 
-import SkeletonMessage from '@/views/ChatWarper/Chat/CenterContent/MessageList/SkeletonMessage.vue'
-import DoubleCheckIcon from '@/components/Icons/DoubleCheck.vue'
 import ChatIcon from '@/components/Icons/Chat.vue'
+import DoubleCheckIcon from '@/components/Icons/DoubleCheck.vue'
 
-import type {
-  MessageInfo,
-  TempSendMessage,
-} from '@/service/interface/app/message'
+import type { MessageInfo } from '@/service/interface/app/message'
 import type { CbError } from '@/service/interface/function'
 import type { DebouncedFunc } from 'lodash'
-import type { ConversationInfo } from '@/service/interface/app/conversation'
+import type { Handler } from 'mitt'
+import { is } from 'date-fns/locale'
 
 /**dữ liệu từ socket */
 interface CustomEvent extends Event {
@@ -288,76 +286,137 @@ const show_list_message = computed(() =>
     })
     // Trả về true nếu có attachment hợp lệ
     return HAS_VALID_ATTACHMENT
-  })
+  }),
 )
 
 /**vị trí của tin nhắn cuối cùng nhân viên gửi */
 const last_client_message_index = computed(() =>
   findLastIndex(
     show_list_message.value,
-    m => m.message_type === 'page' && !!m.message_metadata
-  )
+    m => m.message_type === 'page' && !!m.message_metadata,
+  ),
 )
 
 // lắng nghe sự kiện từ socket khi component được tạo ra
 onMounted(() => {
-  // * reset danh sách tin nhắn lúc mới vào nếu không mở bằng modal
-  messageStore.list_message = []
+  resetMessage()
+  // // * reset danh sách tin nhắn lúc mới vào nếu không mở bằng modal
+  // messageStore.list_message = []
 
-  if (true) {
-    // * reset danh sách tin nhắn khi đổi khách hàng
-    messageStore.list_message = []
+  // if (true) {
+  //   // * reset danh sách tin nhắn khi đổi khách hàng
+  //   messageStore.list_message = []
 
-    // * reset danh sách tin nhắn chờ
-    messageStore.send_message_list = []
+  //   // * reset danh sách tin nhắn chờ
+  //   messageStore.send_message_list = []
 
-    // reset cờ đã load hết dữ liệu
-    is_done.value = false
+  //   // reset cờ đã load hết dữ liệu
+  //   is_done.value = false
 
-    // reset phân trang
-    skip.value = 0
+  //   // reset phân trang
+  //   skip.value = 0
 
-    getListMessage(true)
-  }
+  //   getListMessage(true)
+  // }
 
   // tin nhắn mới
-  window.addEventListener('chatbox_socket_message', socketNewMessage)
+  // window.addEventListener('chatbox_socket_message', socketNewMessage)
 
   // cập nhật tin nhắn
-  window.addEventListener('chatbox_socket_update_message', socketUpdateMssage)
+  // window.addEventListener('chatbox_socket_update_message', socketUpdateMssage)
 })
 
 // hủy lắng nghe sự kiện từ socket khi component bị hủy
-onUnmounted(() => {
-  // tin nhắn mới
-  window.removeEventListener('chatbox_socket_message', socketNewMessage)
+// onUnmounted(() => {
+//   // tin nhắn mới
+//   // window.removeEventListener('chatbox_socket_message', socketNewMessage)
 
-  // cập nhật tin nhắn
-  window.removeEventListener(
-    'chatbox_socket_update_message',
-    socketUpdateMssage
-  )
-})
+//   // cập nhật tin nhắn
+//   // window.removeEventListener(
+//   //   'chatbox_socket_update_message',
+//   //   socketUpdateMssage,
+//   // )
+// })
+
+// lắng nghe sự kiện tin nhắn mới, tạm thời ép kiểu
+listenerEventBus('chatbox_socket_message', socketNewMessage as Handler<unknown>)
+
+// lắng nghe sự kiện cập nhật tin nhắn, tạm thời ép kiểu
+listenerEventBus(
+  'chatbox_socket_update_message',
+  socketUpdateMssage as Handler<unknown>,
+)
 
 watch(
   () => select_conversation.value,
   (new_val, old_val) => {
-    // * reset danh sách tin nhắn khi đổi khách hàng
-    messageStore.list_message = []
+    resetMessage()
+    // // * reset danh sách tin nhắn khi đổi khách hàng
+    // messageStore.list_message = []
 
-    // * reset danh sách tin nhắn chờ
-    messageStore.send_message_list = []
+    // // * reset danh sách tin nhắn chờ
+    // messageStore.send_message_list = []
 
-    // reset cờ đã load hết dữ liệu
-    is_done.value = false
+    // // reset cờ đã load hết dữ liệu
+    // is_done.value = false
 
-    // reset phân trang
-    skip.value = 0
+    // // reset phân trang
+    // skip.value = 0
 
-    getListMessage(true)
-  }
+    // getListMessage(true)
+  },
 )
 
+/** hàm lấy các dữ liệu của tin nhắm */
+function getMessageMeta(message: MessageInfo) {
+  /** id của khách hàng */
+  const CLIENT_ID = conversationStore.select_conversation?.fb_client_id
+  return {
+    TYPE: message.message_type,
+    IS_AD: Boolean(message.ad_id),
+    IS_POST: Boolean(message.fb_post_id),
+    IS_FROM_CLIENT: message.sender_id === CLIENT_ID,
+  }
+}
+
+/** có phải tin nhắn của bản thân không */
+function isFromCurrentUser(message: MessageInfo) {
+  const { TYPE, IS_AD, IS_FROM_CLIENT } = getMessageMeta(message)
+  /** là ghi chú của bản thân tạo */
+  const IS_CURRENT_USER_NOTE = TYPE === 'note' && !IS_FROM_CLIENT
+  return TYPE === 'page' || IS_AD || IS_CURRENT_USER_NOTE
+}
+
+/** có phải tin của khách không */
+function isClientMessage(message: MessageInfo) {
+  const { TYPE, IS_AD, IS_FROM_CLIENT, IS_POST } = getMessageMeta(message)
+
+  return (
+    IS_POST ||
+    (TYPE === 'client' && !IS_AD) ||
+    TYPE === 'group' ||
+    (TYPE === 'note' && IS_FROM_CLIENT)
+  )
+}
+
+/**làm mới dữ liệu nhắn tin */
+function resetMessage() {
+  // * reset danh sách tin nhắn khi đổi khách hàng
+  messageStore.list_message = []
+  // reset map danh sách tin nhắn
+  messageStore.map_list_message_by_id.clear()
+
+  // * reset danh sách tin nhắn chờ
+  messageStore.send_message_list = []
+
+  // reset cờ đã load hết dữ liệu
+  is_done.value = false
+
+  // reset phân trang
+  skip.value = 0
+
+  getListMessage(true)
+}
 /**có khoá truy cập của trang này không */
 function isLockPage(): boolean {
   // chỉ lock với gói free
@@ -383,6 +442,20 @@ function isLastPageMessage(message: MessageInfo, index: number) {
   // nếu là tin nhắn cuối cùng của nhân viên gửi
   return index === last_client_message_index.value
 }
+
+/**
+ * Chèn tin nhắn vào danh sách tin nhắn theo đúng thời gian
+ * - sử dụng binary search để tìm index cần chèn, tối ưu hiệu năng
+ * - chèn đúng vị trí, không ảnh hưởng đến thứ tự của danh sách
+ * - không loop cả mảng
+ */
+function insertMessageSorted(list_message: MessageInfo[], msg: MessageInfo) {
+  /**binary search index cần chèn dựa trên field time */
+  const INDEX = sortedIndexBy(list_message, msg, 'createdAt')
+
+  // Chèn đúng vị trí
+  list_message.splice(INDEX, 0, msg)
+}
 /**xử lý socket tin nhắn mới */
 function socketNewMessage({ detail }: CustomEvent) {
   // nếu không có dữ liệu thì thôi
@@ -404,7 +477,7 @@ function socketNewMessage({ detail }: CustomEvent) {
           type: 'CLIENT_MESSAGE',
           payload: { message: detail?.message_text },
         },
-        '*'
+        '*',
       )
     })
   }
@@ -423,20 +496,108 @@ function socketNewMessage({ detail }: CustomEvent) {
   /** có đang scroll xuống dưới cùng không? */
   const IS_BOTTOM = SCROLL_POSITION === LIST_MESSAGE?.scrollHeight
 
-  // thêm tin nhắn vào danh sách
-  messageStore.list_message.push(detail)
+  // nếu có message_mid và chưa có trong mảng thì mới thêm
+  if (
+    detail.message_mid &&
+    !messageStore.map_list_message_by_id.has(detail.message_mid)
+  ) {
+    // thêm tin nhắn vào danh sách
+    insertMessageSorted(messageStore.list_message, detail)
+    // messageStore.list_message.push(detail)
+
+    // thêm tin nhắn vào map
+    messageStore.map_list_message_by_id.set(detail.message_mid, detail)
+  }
 
   // xử lý khi gặp trường hợp phát hiện tin nhắn chờ
-  if (detail?.message_mid)
-    remove(
-      messageStore.send_message_list,
-      message =>
-        message.message_id === detail?.message_mid ||
-        (message.replay_mid && message.replay_mid === detail?.replay_mid)
-    )
+  if (detail?.message_mid && messageStore.send_message_list?.length) {
+    // xóa tin nhắn tạm
+    remove(messageStore.send_message_list, message => {
+      /** trùng id tin nhắn */
+      const IS_MATCH_MESSAGE_ID = message.message_id === detail?.message_mid
+
+      /** trùng replay_mid tin nhắn */
+      const IS_MATCH_REPLAY_MESSAGE_ID =
+        message.replay_mid && message.replay_mid === detail?.replay_mid
+
+      /**có phải tin nhắn tạm cần xóa không */
+      const IS_MATCH = IS_MATCH_MESSAGE_ID || IS_MATCH_REPLAY_MESSAGE_ID
+
+      // nếu tìm thấy tin nhắn tạm cần xóa
+      // if (IS_MATCH) {
+      /**lấy temp_id của tin nhắn */
+      const TEMP_ID = message?.temp_id
+
+      /**lấy timer clear tin nhắn tạm */
+      // const TIMER = messageStore.timer_clear_send_message_list.get(TEMP_ID)
+
+      // // nếu có timer clear tin nhắn tạm
+      // if (TIMER) {
+      //   // xóa timer clear tin nhắn tạm, vì không cần nữa
+      //   clearTimeout(TIMER)
+
+      //   // xóa biến lưu id của timer clear tin nhắn tạm
+      //   messageStore.timer_clear_send_message_list.delete(TEMP_ID)
+      // }
+      // }
+
+      // trả về kết quả
+      return IS_MATCH
+    })
+  }
+
+  /**
+   * Xử lý clear temp message dựa trên URL attachment
+   * Áp dụng cho các platform không phải FB khi gửi nhiều ảnh
+   * Socket sẽ trả về từng tin riêng, mỗi tin có 1 attachment
+   */
+  // if (detail?.message_attachments?.length) {
+  //   /** Lấy danh sách URL của attachment trong tin nhắn socket */
+  //   const SOCKET_URLS = detail.message_attachments
+  //     .map((att: any) => att?.payload?.url || att?.url)
+  //     .filter(Boolean)
+
+  //   /** Flag để check đã xóa temp message chưa */
+  //   let is_cleared = false
+
+  //   /** Xóa temp message có attachment URL trùng khớp */
+  //   if (SOCKET_URLS.length) {
+  //     /** Kiểm tra và xóa temp message có URL trùng */
+  //     const REMOVED = remove(messageStore.send_message_list, temp_msg => {
+  //       /** Kiểm tra temp message có attachment nào trùng URL không */
+  //       const HAS_MATCHING_URL = temp_msg.message_attachments?.some(temp_att =>
+  //         SOCKET_URLS.includes(temp_att.url)
+  //       )
+  //       return HAS_MATCHING_URL
+  //     })
+  //     /** Đánh dấu đã clear nếu có xóa được */
+  //     if (REMOVED.length) is_cleared = true
+  //   }
+
+  //   /**
+  //    * Fallback cho Zalo và các platform khác:
+  //    * URL từ server có thể khác với URL temp (re-upload, encode khác)
+  //    * Nếu tin nhắn socket là từ page và có attachment, xóa temp message attachment cũ nhất
+  //    */
+  //   if (!is_cleared && detail?.message_type === 'page') {
+  //     /** Tìm temp message có attachment */
+  //     const TEMP_INDEX = messageStore.send_message_list.findIndex(
+  //       temp_msg => temp_msg.message_attachments?.length && !temp_msg.error
+  //     )
+  //     /** Nếu tìm thấy thì xóa */
+  //     if (TEMP_INDEX !== -1) {
+  //       messageStore.send_message_list.splice(TEMP_INDEX, 1)
+  //     }
+  //   }
+  // }
 
   // nếu đang ở vị trí bottom thì dùng scrollToBottomMessage
   if (IS_BOTTOM) scrollToBottomMessage(messageStore.list_message_id)
+
+  // Update vị trí "người đã đọc" sau khi có tin nhắn mới
+  nextTick(() => {
+    visibleFirstClientReadAvatar()
+  })
 }
 /**xử lý socket cập nhật tin nhắn hiện tại */
 function socketUpdateMssage({ detail }: CustomEvent) {
@@ -468,7 +629,7 @@ function onScrollMessage($event: Event) {
 /** hàm debounce load dữ liệu tin nhắn */
 const debounceLoadMoreMessage = debounce(
   $event => loadMoreMessage($event as UIEvent),
-  300
+  300,
 )
 
 /**ẩn hiện nút về bottom */
@@ -529,7 +690,7 @@ function getListMessage(is_scroll?: boolean) {
 
         /** thẻ div chứa danh sách tin nhắn */
         const LIST_MESSAGE = document.getElementById(
-          messageStore.list_message_id
+          messageStore.list_message_id,
         )
 
         /** nếu có thì thôi */
@@ -549,7 +710,7 @@ function getListMessage(is_scroll?: boolean) {
         nextTick(() => {
           /** lấy div chưa danh sách tin nhắn */
           const LIST_MESSAGE = document.getElementById(
-            messageStore.list_message_id
+            messageStore.list_message_id,
           )
 
           /** nếu không có thì thôi */
@@ -573,7 +734,7 @@ function getListMessage(is_scroll?: boolean) {
 
         setTimeout(
           () => scrollToBottomMessage(messageStore.list_message_id),
-          500
+          500,
         )
       }
 
@@ -601,7 +762,7 @@ function getListMessage(is_scroll?: boolean) {
           is_loading.value = false
         }, 300)
       }
-    }
+    },
   )
 }
 /**
@@ -648,7 +809,7 @@ function visibleLastStaffReadAvatar(staff_id: string) {
   function doVisibleAvatar(staff_id: string) {
     /**toàn bộ các div avatar */
     const LIST_AVATAR: HTMLElement[] = Array.from(
-      document.querySelectorAll(`.message-staff-read-${staff_id}`)
+      document.querySelectorAll(`.message-staff-read-${staff_id}`),
     )
 
     /** lặp qua toàn bộ các div */
@@ -685,6 +846,14 @@ const tryLoadUntilScrollable = (cb: CbError) => {
       /** thêm vào danh sách lên đầu */
       messageStore.list_message.unshift(...r)
 
+      // lặp qua các tin nhắn để lưu vào map list_message_by_id
+      r?.forEach(message => {
+        // nếu không có message_mid thì thôi
+        if (!message.message_mid) return
+        // lưu lại vào map
+        messageStore.map_list_message_by_id.set(message.message_mid, message)
+      })
+
       /** trang tiếp theo */
       skip.value += LIMIT
 
@@ -693,7 +862,7 @@ const tryLoadUntilScrollable = (cb: CbError) => {
       nextTick(() => {
         /** lấy div chưa danh sách tin nhắn */
         const LIST_MESSAGE = document.getElementById(
-          messageStore.list_message_id
+          messageStore.list_message_id,
         )
 
         /** nếu không có thì thôi */
@@ -711,13 +880,8 @@ const tryLoadUntilScrollable = (cb: CbError) => {
           cb()
         }
       })
-    }
+    },
   )
 }
 </script>
-<style scoped lang="scss">
-.message-size {
-  @apply max-w-96;
-  width: fit-content;
-}
-</style>
+<style scoped lang="scss"></style>

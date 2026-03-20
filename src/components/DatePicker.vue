@@ -39,7 +39,7 @@
                     'text-orange-600': isToday(getDayInfo(index_row, index_col)?.timestamp),
                     '!bg-orange-600 text-white': select_date.year === getDayInfo(index_row, index_col)?.year && select_date.month === getDayInfo(index_row, index_col)?.month && select_date.date === getDayInfo(index_row, index_col)?.date,
                     'hover:bg-orange-600 hover:text-white cursor-pointer': !max || getDayInfo(index_row, index_col)?.timestamp < max,
-                    'text-slate-400 cursor-not-allowed': max && getDayInfo(index_row, index_col)?.timestamp >= max,
+                    'text-slate-400 cursor-not-allowed': (max && getDayInfo(index_row, index_col)?.timestamp >= max) || (min && getDayInfo(index_row, index_col)?.timestamp < min),
                     'bg-orange-100': (modelValue && min_another_range && getDayInfo(index_row, index_col)?.timestamp < modelValue && getDayInfo(index_row, index_col)?.timestamp > min_another_range) || (modelValue && max_another_range && getDayInfo(index_row, index_col)?.timestamp > modelValue && getDayInfo(index_row, index_col)?.timestamp <  max_another_range)
                 }" class="w-[18px] h-[18px] rounded-full flex justify-center items-center">
                     {{ getDayInfo(index_row, index_col)?.date }}
@@ -92,8 +92,10 @@ const $emit = defineEmits(['update:modelValue'])
 const $props = withDefaults(defineProps<{
     /**giá trị của v-model được truyền vào dưới dạng timestamp */
     modelValue?: number
-    /**giá trị thời gian tối data có thể chọn được */
+    /**giá trị thời gian tối đa data có thể chọn được */
     max?: number
+    /**giá trị thời gian tối thiểu data có thể chọn được */
+    min?: number
 
     /**
      * 2 giá trị dưới đây chỉ được prop 1, sử dụng khi làm time range
@@ -191,6 +193,9 @@ function selectThisDate(time_info: ADayInfo) {
     // nếu quá limit thì không cho chọn thời gian
     if ($props.max && time_info.timestamp >= $props.max) return
 
+    // nếu quá limit min thì không cho chọn thời gian
+    if($props.min && time_info.timestamp < $props.min) return
+
     /**
      * tính toán thời gian được chọn + giờ được chọn để trả về kết quả cuối cùng
      */
@@ -239,6 +244,18 @@ function changeDate(object: 'MONTH' | 'YEAR', action: 'ADD' | 'MINUS') {
     if (object === 'MONTH') {
         if (action === 'ADD') current_month.value++
         if (action === 'MINUS') current_month.value--
+
+        // nếu tháng lớn hơn 12
+        if (current_month.value > 11) {
+          current_month.value = 0
+          current_year.value++
+        }
+
+        // nếu tháng nhỏ hơn 1
+        if (current_month.value < 0) {
+          current_month.value = 11
+          current_year.value--
+        }
     }
 
     if (object === 'YEAR') {

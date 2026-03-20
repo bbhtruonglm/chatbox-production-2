@@ -143,6 +143,8 @@ import {
   ArrowTopRightOnSquareIcon,
   FunnelIcon,
 } from '@heroicons/vue/24/outline'
+import type { Handler } from 'mitt'
+import { listenerEventBus } from '@/event'
 
 /**dữ liệu từ socket */
 interface CustomEventMessage extends Event {
@@ -317,23 +319,29 @@ const $main = new Main()
 // lấy dữ liệu bài post khi component được tạo
 onMounted(() => $main.getPostData())
 
-// lắng nghe sự kiện từ socket khi component được tạo ra
-onMounted(() => {
-  // tin nhắn mới
-  window.addEventListener(
-    'chatbox_socket_message',
-    $main.socketNewMessage.bind($main)
-  )
-})
+// // lắng nghe sự kiện từ socket khi component được tạo ra
+// onMounted(() => {
+//   // tin nhắn mới
+//   window.addEventListener(
+//     'chatbox_socket_message',
+//     $main.socketNewMessage.bind($main)
+//   )
+// })
 
-// hủy lắng nghe sự kiện từ socket khi component bị hủy
-onUnmounted(() => {
-  // tin nhắn mới
-  window.removeEventListener(
-    'chatbox_socket_message',
-    $main.socketNewMessage.bind($main)
-  )
-})
+// // hủy lắng nghe sự kiện từ socket khi component bị hủy
+// onUnmounted(() => {
+//   // tin nhắn mới
+//   window.removeEventListener(
+//     'chatbox_socket_message',
+//     $main.socketNewMessage.bind($main)
+//   )
+// })
+
+// lắng nghe sự kiện từ socket
+listenerEventBus(
+  'chatbox_socket_message',
+  $main.socketNewMessage.bind($main) as Handler<unknown>,
+)
 
 // lấy dữ liệu bài post khi conversation thay đổi
 watch(

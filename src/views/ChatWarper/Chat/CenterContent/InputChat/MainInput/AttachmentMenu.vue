@@ -42,9 +42,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useConversationStore, useMessageStore } from '@/stores'
-import { handleFileLocal } from '@/service/helper/file'
+import { handleFileLocal, validateFileSize } from '@/service/helper/file'
 import { map, get } from 'lodash'
 import { getFbFileType } from '@/service/helper/file'
+import { toast } from '@/service/helper/alert'
 
 import Dropdown from '@/components/Dropdown.vue'
 import MenuItem from '@/components/Main/Dashboard/MenuItem.vue'
@@ -102,8 +103,18 @@ function selectAttachmentFromDevice(accept: string = '*') {
     // làm sạch danh sách file
     messageStore.upload_file_list = []
 
+    /** lọc các file vượt quá 20MB */
+    const VALID_FILES = Array.from(INPUT.files || []).filter(file => {
+      // kiểm tra kích thước file
+      if (!validateFileSize(file)) {
+        toast('error', `File "${file.name}" vượt quá 20MB`)
+        return false
+      }
+      return true
+    })
+
     // ghi dữ liệu vào mảng
-    map(INPUT.files, file => handleFileLocal(file))
+    map(VALID_FILES, file => handleFileLocal(file))
 
     // xoá input sau khi xong việc
     if (INPUT && INPUT.parentNode) INPUT.parentNode.removeChild(INPUT)
@@ -124,13 +135,17 @@ function handlePickFile(file_list: FileInfo[]) {
     ...file_list?.map(file => {
       /**kiểu dữ liệu của fb */
       const TYPE = getFbFileType(file.mimetype)
+      /*** id random để thêm vào thuộc tính id khi render */
+      const ID = crypto.randomUUID()
 
       return {
+        id: ID,
         type: TYPE,
         is_done: false,
         is_loading: false,
         preview: TYPE === 'image' ? file.url : undefined,
         url: file.url,
+        file_name: file.original_name,
         fb_image_id: get(file, 'fb_image_id[0]'),
       }
     })

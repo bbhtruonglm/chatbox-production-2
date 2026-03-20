@@ -18,12 +18,15 @@
         {{ source?.client_name || 'No name' }}
       </div>
     </div>
-    <div
+    <div class="flex-shrink-0 text-xs">
+      {{ $date_handle.formatCompareCurrentYear(source?.last_message_time) }}
+    </div>
+    <!-- <div
       :key="force_render_key"
       class="flex-shrink-0 text-xs"
     >
       {{ $date_handle.formatCompareCurrentYear(source?.last_message_time) }}
-    </div>
+    </div> -->
   </div>
 </template>
 <script setup lang="ts">
@@ -44,55 +47,55 @@ const $props = withDefaults(
   defineProps<{
     source?: ConversationInfo
   }>(),
-  {}
+  {},
 )
 
 /** thông tin của nhân sự được assign */
 const staff_info = computed(() => {
   return getStaffInfo(
     $props.source?.fb_page_id,
-    $props.source?.user_id || $props.source?.fb_staff_id
+    $props.source?.user_id || $props.source?.fb_staff_id,
   )
 })
 
-/**key của div để bắt buộc phần tử phải render lại khi cần thiết */
-const force_render_key = ref(0)
-/**id của interval */
-const interval_id = ref<number | null>(null)
+// /**key của div để bắt buộc phần tử phải render lại khi cần thiết */
+// const force_render_key = ref(0)
+// /**id của interval */
+// // const interval_id = ref<number | null>(null)
 
-class Main {
-  /**render lại thời gian */
-  refreshTime() {
-    force_render_key.value++
-  }
-}
-const $main = new Main()
+// class Main {
+//   /**render lại thời gian */
+//   refreshTime() {
+//     force_render_key.value++
+//   }
+// }
+// const $main = new Main()
 
-// tạo interval khi component được mount
-onMounted(() => {
-  // lưu id của interval
-  interval_id.value = setInterval(() => $main.refreshTime(), 1000 * 30)
-})
+// // tạo interval khi component được mount
+// onMounted(() => {
+//   // lưu id của interval
+//   interval_id.value = setInterval(() => $main.refreshTime(), 1000 * 30)
+// })
 
-// xóa interval khi component bị unmount
-onUnmounted(() => {
-  // nếu interval_id không tồn tại thì không cần xóa
-  if (!interval_id.value) return
+// // xóa interval khi component bị unmount
+// onUnmounted(() => {
+//   // nếu interval_id không tồn tại thì không cần xóa
+//   if (!interval_id.value) return
 
-  // xóa interval
-  clearInterval(interval_id.value)
-})
+//   // xóa interval
+//   clearInterval(interval_id.value)
+// })
 
-onMounted(() => {
-  window.addEventListener(
-    'chatbox_conversation_refresh_time',
-    $main.refreshTime
-  )
-})
-onUnmounted(() => {
-  window.removeEventListener(
-    'chatbox_conversation_refresh_time',
-    $main.refreshTime
-  )
-})
+// onMounted(() => {
+//   window.addEventListener(
+//     'chatbox_conversation_refresh_time',
+//     $main.refreshTime
+//   )
+// })
+// onUnmounted(() => {
+//   window.removeEventListener(
+//     'chatbox_conversation_refresh_time',
+//     $main.refreshTime
+//   )
+// })
 </script>

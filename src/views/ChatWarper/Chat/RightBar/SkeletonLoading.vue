@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-[400px] flex-shrink-0 h-full flex flex-col gap-2 overflow-hidden"
+    class="w-full flex-shrink-0 h-full flex flex-col gap-2 overflow-hidden"
   >
     <div
       v-for="i in 3"

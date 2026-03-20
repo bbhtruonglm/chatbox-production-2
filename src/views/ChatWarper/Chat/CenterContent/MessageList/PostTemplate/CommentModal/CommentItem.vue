@@ -66,7 +66,7 @@
           :src="
             $cdn.fbCommentMedia(
               conversationStore.select_conversation?.fb_page_id,
-              comment.comment_id
+              comment.comment_id,
             )
           "
         />
@@ -173,6 +173,8 @@ import type {
   MessageTemplateInput,
 } from '@/service/interface/app/message'
 import type { IAlert } from '@/utils/helper/Alert/type'
+import type { Handler } from 'mitt'
+import { listenerEventBus } from '@/event'
 
 /**dữ liệu của sự kiện focus */
 interface IFocusInputPayload {
@@ -211,7 +213,7 @@ const $props = withDefaults(
     /**không hiện btn xem thêm - vì là comemnt lớp con */
     is_child_comment?: boolean
   }>(),
-  {}
+  {},
 )
 
 const $mesage_service = container.resolve(MessageService)
@@ -242,11 +244,11 @@ const child_comments = ref<FacebookCommentPost[]>([])
 
 /**id của page */
 const page_id = computed(
-  () => conversationStore.select_conversation?.fb_page_id
+  () => conversationStore.select_conversation?.fb_page_id,
 )
 /**id của client */
 const client_id = computed(
-  () => conversationStore.select_conversation?.fb_client_id
+  () => conversationStore.select_conversation?.fb_client_id,
 )
 /**có phải từ page không */
 const is_from_page = computed(() => page_id.value === $props.comment?.from?.id)
@@ -257,8 +259,8 @@ const message_source = computed<MessageTemplateInput>(
   () =>
     $mesage_service.genMessageSource(
       $props.comment?.ai,
-      $props.comment?.message_attachments
-    )?.[0]
+      $props.comment?.message_attachments,
+    )?.[0],
 )
 
 class Main {
@@ -269,8 +271,8 @@ class Main {
   constructor(
     private readonly API_POST = container.resolve(N4SerivceAppPost),
     private readonly SERVICE_TOAST: IAlert = container.resolve(
-      ToastReplyComment
-    )
+      ToastReplyComment,
+    ),
   ) {}
 
   /**ẩn hiện bình luận */
@@ -287,7 +289,7 @@ class Main {
       client_id.value,
       $props.post_id,
       $props.comment.comment_id,
-      true
+      true,
     )
 
     // thông báo thành công
@@ -308,7 +310,7 @@ class Main {
       // client_id.value,
       $props.comment?.comment_id,
       skip.value,
-      LIMIT_RECORD
+      LIMIT_RECORD,
     )
 
     // nếu hết, hoặc ít hơn limit thì báo là đã hết dữ liệu
@@ -342,7 +344,7 @@ class Main {
           page_id.value,
           client_id.value,
           COMMENT_ID,
-          reply_text.value
+          reply_text.value,
         )
         break
     }
@@ -378,7 +380,7 @@ class Main {
     page_id: string,
     client_id: string,
     comment_id: string,
-    text: string
+    text: string,
   ) {
     // gửi tin nhắn private
     await this.API_POST.sendPrivateReply(
@@ -386,7 +388,7 @@ class Main {
       client_id,
       $props.post_id,
       comment_id,
-      text
+      text,
     )
 
     // đánh dấu là đã trả lời riêng
@@ -473,41 +475,52 @@ const $main = new Main()
 // tự động lấy bình luận con khi mở modal
 onMounted(() => $main.getFbPostChildComments())
 
-// lắng nghe sự kiện từ socket khi component được tạo ra
-onMounted(() => {
-  // cập nhật tin nhắn
-  window.addEventListener(
-    'chatbox_socket_update_comment',
-    $main.socketUpdateComment.bind($main)
-  )
-})
+// // lắng nghe sự kiện từ socket khi component được tạo ra
+// onMounted(() => {
+//   // cập nhật tin nhắn
+//   window.addEventListener(
+//     'chatbox_socket_update_comment',
+//     $main.socketUpdateComment.bind($main),
+//   )
+// })
 
-// hủy lắng nghe sự kiện từ socket khi component bị hủy
-onUnmounted(() => {
-  // cập nhật tin nhắn
-  window.removeEventListener(
-    'chatbox_socket_update_comment',
-    $main.socketUpdateComment.bind($main)
-  )
-})
+// // hủy lắng nghe sự kiện từ socket khi component bị hủy
+// onUnmounted(() => {
+//   // cập nhật tin nhắn
+//   window.removeEventListener(
+//     'chatbox_socket_update_comment',
+//     $main.socketUpdateComment.bind($main),
+//   )
+// })
+// lắng nghe sự kiện tin nhắn mới, tạm thời ép kiểu
+listenerEventBus(
+  'chatbox_socket_update_comment',
+  $main.socketUpdateComment.bind($main) as Handler<unknown>,
+)
 
-// lắng nghe sự kiện từ socket khi component được tạo ra
-onMounted(() => {
-  // tin nhắn mới
-  window.addEventListener(
-    'chatbox_socket_message',
-    $main.socketNewMessage.bind($main)
-  )
-})
+// // lắng nghe sự kiện từ socket khi component được tạo ra
+// onMounted(() => {
+//   // tin nhắn mới
+//   window.addEventListener(
+//     'chatbox_socket_message',
+//     $main.socketNewMessage.bind($main)
+//   )
+// })
 
-// hủy lắng nghe sự kiện từ socket khi component bị hủy
-onUnmounted(() => {
-  // tin nhắn mới
-  window.removeEventListener(
-    'chatbox_socket_message',
-    $main.socketNewMessage.bind($main)
-  )
-})
+// // hủy lắng nghe sự kiện từ socket khi component bị hủy
+// onUnmounted(() => {
+//   // tin nhắn mới
+//   window.removeEventListener(
+//     'chatbox_socket_message',
+//     $main.socketNewMessage.bind($main)
+//   )
+// })
+
+// lắng nghe sự kiện từ socket
+listenerEventBus(
+  'chatbox_socket_message',
+  $main.socketNewMessage.bind($main) as Handler<unknown>,
+)
 </script>
 <style lang="scss" scoped>
 @import '@/views/ChatWarper/Chat/CenterContent/MessageList/PostTemplate/style.scss';

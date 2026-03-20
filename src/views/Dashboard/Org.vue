@@ -34,7 +34,6 @@ import Menu from '@/views/Dashboard/Org/Menu.vue'
 import ReChargeBtn from '@/views/Dashboard/Org/ReChargeBtn.vue'
 
 const orgStore = useOrgStore()
-
 // cắm bong bóng chat vào trang
 useEmbedChat()
 </script>

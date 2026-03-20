@@ -147,14 +147,14 @@ export function usePageManager() {
       return pickBy(page_list, (page, id) => {
         /** id của tổ chức của trang hiện tại */
         const PAGE_ORG_ID = page_to_org_map[id]
-        console.log(PAGE_ORG_ID, 'PAGE_ORG_ID ' + id)
+        // console.log(PAGE_ORG_ID, 'PAGE_ORG_ID ' + id)
         /** id của nhóm của trang hiện tại */
         const PAGE_GROUP_ID = pape_to_group_map[id]
-        console.log(PAGE_GROUP_ID, 'PAGE_GROUP_ID ' + id)
+        // console.log(PAGE_GROUP_ID, 'PAGE_GROUP_ID ' + id)
 
         /** nếu tổ chức đó đang không lọc theo nhóm thì thôi */
         if (!selected_org_group[PAGE_ORG_ID]) return true
-        console.log(selected_org_group[PAGE_ORG_ID], 'selected_org_group ' + id)
+        // console.log(selected_org_group[PAGE_ORG_ID], 'selected_org_group ' + id)
 
         /** nếu có thì cần lọc đúng những page của nhóm đã chọn */
         return PAGE_GROUP_ID?.includes(selected_org_group[PAGE_ORG_ID])

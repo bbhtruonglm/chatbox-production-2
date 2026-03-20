@@ -36,7 +36,7 @@
       <DatePicker
         v-if="conversationStore.option_filter_page_data?.time_range?.gte"
         v-model="conversationStore.option_filter_page_data.time_range.gte"
-        :max="TOMORROW_TIME"
+        :max="conversationStore.option_filter_page_data.time_range.lte"
         :max_another_range="
           conversationStore.option_filter_page_data.time_range.lte
         "
@@ -69,6 +69,7 @@
         :min_another_range="
           conversationStore.option_filter_page_data.time_range.gte
         "
+        :min="conversationStore.option_filter_page_data.time_range.gte"
         :max="TOMORROW_TIME"
         class="border rounded-xl mt-1"
       />

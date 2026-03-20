@@ -446,6 +446,15 @@ export interface TempSendMessage {
   replay_mid?: string
   /**nội dung tin nhắn trước đó được reply nếu có */
   snap_replay_message?: MessageInfo
+  /**danh sách file đính kèm (cho tin nhắn ảnh) */
+  message_attachments?: {
+    /**đường dẫn file */
+    url: string
+    /**loại file */
+    type: FileTypeInfo
+  }[]
+  /**kích thước các file đính kèm */
+  attachment_size?: (AttachmentSize | null)[]
 }
 
 /**dữ liệu 1 file */

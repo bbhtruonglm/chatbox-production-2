@@ -48,6 +48,8 @@ import { gen_answer } from '@/service/api/chatbox/ai'
 import { container, singleton } from 'tsyringe'
 import { Toast } from '@/utils/helper/Alert/Toast'
 import type { IAlert } from '@/utils/helper/Alert/type'
+import { listenerEventBus } from '@/event'
+import type { Handler } from 'mitt'
 
 /**dữ liệu từ socket */
 interface ISocketMessagePayload extends Event {
@@ -78,13 +80,13 @@ const ai_answer = computed({
     set(
       conversationStore.conversation_list,
       [conversationStore.select_conversation?.data_key || '', 'ai_answer'],
-      value
+      value,
     )
   },
 })
 /**câu trả lời tồn tại và không phải là khoảng trắng */
 const is_visible_ai_answer = computed(
-  () => ai_answer.value && ai_answer.value !== ' '
+  () => ai_answer.value && ai_answer.value !== ' ',
 )
 
 @singleton()
@@ -96,7 +98,7 @@ class CustomToast extends Toast implements IAlert {
 }
 class Main {
   constructor(
-    private readonly SERVICE_INPUT = container.resolve(InputService)
+    private readonly SERVICE_INPUT = container.resolve(InputService),
   ) {}
 
   /**hàm debounce để tránh spam ai quá nhiều */
@@ -167,7 +169,7 @@ class Main {
 
     /** ghi đè nội dung vào ô chat */
     this.SERVICE_INPUT.setInputText(
-      conversationStore.select_conversation?.ai_answer
+      conversationStore.select_conversation?.ai_answer,
     )
 
     /** xóa câu trả lời của ai hiện tại */
@@ -176,23 +178,29 @@ class Main {
 }
 const $main = new Main()
 
-/** lắng nghe sự kiện từ socket khi component được tạo ra */
-onMounted(() => {
-  /** tin nhắn mới */
-  window.addEventListener(
-    'chatbox_socket_message',
-    $main.onSocketMessage.bind($main)
-  )
-})
+// /** lắng nghe sự kiện từ socket khi component được tạo ra */
+// onMounted(() => {
+//   /** tin nhắn mới */
+//   window.addEventListener(
+//     'chatbox_socket_message',
+//     $main.onSocketMessage.bind($main)
+//   )
+// })
 
-/** hủy lắng nghe sự kiện từ socket khi component bị hủy */
-onUnmounted(() => {
-  /** tin nhắn mới */
-  window.removeEventListener(
-    'chatbox_socket_message',
-    $main.onSocketMessage.bind($main)
-  )
-})
+// /** hủy lắng nghe sự kiện từ socket khi component bị hủy */
+// onUnmounted(() => {
+//   /** tin nhắn mới */
+//   window.removeEventListener(
+//     'chatbox_socket_message',
+//     $main.onSocketMessage.bind($main)
+//   )
+// })
+
+// lắng nghe sự kiện từ socket
+listenerEventBus(
+  'chatbox_socket_message',
+  $main.onSocketMessage.bind($main) as Handler<unknown>,
+)
 
 watch(
   () => messageStore.list_message,
@@ -216,6 +224,6 @@ watch(
       /** xử lý trường hợp khách nhắn tin dồn dập, để tránh spam ai quá nhiều */
       $main.debounceGenAnswer()
     }, 1000)
-  }
+  },
 )
 </script>

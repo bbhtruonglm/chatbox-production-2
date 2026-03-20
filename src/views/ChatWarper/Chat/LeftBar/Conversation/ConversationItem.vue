@@ -140,6 +140,9 @@ class Main {
     /** ẩn mũi tên scroll bottom */
     messageStore.is_show_to_bottom = false
 
+    /** reset danh sách file tải lên */
+    messageStore.upload_file_list = []
+
     /**cấu hình trang đặc biệt */
     const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
 

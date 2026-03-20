@@ -5,11 +5,11 @@ import type { CbError } from '@/service/interface/function'
 import { flow } from '@/service/helper/async'
 import { getCurrentOrgInfo } from '@/service/function'
 import { getItem } from '@/service/helper/localStorage'
-import { handleFileLocal } from '@/service/helper/file'
+import { handleFileLocal, validateFileSize } from '@/service/helper/file'
 import { map } from 'lodash'
 import { onMounted } from 'vue'
 import { read_me_chatbot_user } from '@/service/api/chatbox/n4-service'
-import { toastError } from '@/service/helper/alert'
+import { toastError, toast } from '@/service/helper/alert'
 
 /** load các dữ liệu cần thiết của giao diện */
 export function initRequireData() {
@@ -82,7 +82,17 @@ export function useDropFile() {
     // đang gửi thì không cho chọn lại file để bị lỗi
     if (messageStore.is_send_file) return
 
-    map($event.dataTransfer?.files, file => handleFileLocal(file))
+    /** lọc các file vượt quá 20MB */
+    const VALID_FILES = Array.from($event.dataTransfer?.files || []).filter(file => {
+      // kiểm tra kích thước file
+      if (!validateFileSize(file)) {
+        toast('error', `File "${file.name}" vượt quá 20MB`)
+        return false
+      }
+      return true
+    })
+
+    map(VALID_FILES, file => handleFileLocal(file))
   }
   return {
     onDropFile,

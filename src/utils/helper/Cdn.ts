@@ -78,7 +78,7 @@ export interface ICdn {
   tiktokMessageMedia(
     page_id?: string,
     message_id?: string,
-    index?: number
+    index?: number,
   ): string
   /**
    * đường dẫn media của message
@@ -89,13 +89,25 @@ export interface ICdn {
   zaloMessageMedia(
     page_id?: string,
     message_id?: string,
-    index?: number
+    index?: number,
   ): string
   /**
    * đường dẫn ảnh đại diện của page zalo
    * @param page_id id của trang
    */
   zlpPageAvt(page_id?: string): string
+  /**
+   * đường dẫn ảnh đại diện của page tiktok
+   * @param page_id id của trang
+   */
+  tiktokPageAvt(page_id?: string): string
+  /**
+   * đường dẫn media của message
+   * @param page_id id của trang
+   * @param message_id id của message
+   * @param index index của media
+   */
+  zlpMessageMedia(page_id?: string, message_id?: string, index?: number): string
 }
 
 /**
@@ -140,13 +152,19 @@ export class Cdn implements ICdn {
     return `${this.HOST}/media/web/${page_id}/message/${message_id}/${index}`
   }
   tiktokMessageMedia(page_id?: string, message_id?: string, index?: number) {
-    return `${this.HOST}/media/tiktok/${page_id}/message/${message_id}/${index}`
+    return `${this.HOST}/media/tiktok/${encodeURIComponent(page_id || '')}/message/${encodeURIComponent(message_id || '')}/${index}`
   }
   zaloMessageMedia(page_id?: string, message_id?: string, index?: number) {
     return `${this.HOST}/media/zlp/${page_id}/message/${message_id}/${index}`
   }
   zlpPageAvt(page_id?: string) {
     return `${this.HOST}/media/zlp/${page_id}/page`
+  }
+  zlpMessageMedia(page_id?: string, message_id?: string, index?: number) {
+    return `${this.HOST}/media/zlp/${page_id}/message/${message_id}/${index}`
+  }
+  tiktokPageAvt(page_id?: string) {
+    return `${this.HOST}/media/tiktok/${encodeURIComponent(page_id || '')}/page`
   }
 }
 

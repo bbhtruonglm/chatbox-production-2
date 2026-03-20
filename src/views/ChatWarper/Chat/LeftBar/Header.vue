@@ -23,7 +23,7 @@
   </div>
   <div class="flex-shrink-0 flex items-center justify-between">
     <template v-if="!is_search">
-      <div class="text-sm gap-3 flex items-center h-8">
+      <div class="text-sm gap-3 flex items-center h-8 min-w-0">
         <button
           @click="$main.activeTab('CHAT')"
           :class="{
@@ -32,7 +32,7 @@
               conversationStore.option_filter_page_data.conversation_type ===
                 'CHAT',
           }"
-          class="h-full flex gap-1 items-center"
+          class="h-full flex gap-1 items-center truncate"
         >
           <p>{{ $t('Chat') }}</p>
           <p
@@ -49,7 +49,7 @@
               conversationStore.option_filter_page_data.conversation_type ===
               'POST',
           }"
-          class="h-full flex gap-1 items-center"
+          class="h-full flex gap-1 items-center truncate"
         >
           <p>{{ $t('Bài viết') }}</p>
           <p
@@ -60,7 +60,7 @@
           </p>
         </button>
       </div>
-      <div class="flex gap-3 text-slate-500">
+      <div class="flex gap-3 text-slate-500 shrink-0">
         <button
           v-show="
             conversationStore.select_conversation?.platform_type?.includes(

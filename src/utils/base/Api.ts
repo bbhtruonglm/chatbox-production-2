@@ -24,7 +24,7 @@ export class ApiManager {
     method: string,
     qs?: any,
     body?: any,
-    is_raw_error?: boolean
+    is_raw_error?: boolean,
   ): Promise<any> {
     try {
       /**đường dẫn cần gọi */
@@ -90,11 +90,97 @@ export class ApiManager {
     }
   }
 
+  /** thực hiện gọi API cho phép custom */
+  protected async customRequest(data: {
+    is_json: boolean
+    is_form: boolean
+    path: string
+    method: string
+    qs?: any
+    body?: any
+    headers?: any
+    is_raw_error?: boolean
+  }): Promise<any> {
+    try {
+      /**đường dẫn cần gọi */
+      let uri = data.path
+
+      /**dữ liệu khởi tạo API */
+      const OPTIONS: RequestInit = { method: data.method }
+
+      // nếu có query string thì thêm vào
+      if (data.qs) uri += `?${new URLSearchParams(data.qs).toString()}`
+      
+      /** dữ liệu body */
+      let body = data.body
+
+      // xử lý dữ liệu json nếu
+      if (
+        // thiết lập parser json
+        data.is_json &&
+        // không phải form upload
+        !data.is_form
+      ) {
+        // chuyển body json thành chuỗi
+        body = JSON.stringify(data.body)
+
+        // thiết lập header kiểu json
+        OPTIONS.headers = {
+          'Content-Type': 'application/json',
+        }
+      }
+
+      // nếu có custom header thì thêm vào
+      if (data.headers) {
+        OPTIONS.headers = { ...OPTIONS.headers, ...data.headers }
+      }
+
+      // mặc định dùng token của chatbox, để fix lỗi contructor không tự new zzz
+      // vì đang sử dụng container nên bị bug
+      // @ts-ignore
+      if (!this.#HEADERS?.Authorization)
+        // @ts-ignore
+        // this.#HEADERS.Authorization = getItem('access_token')
+
+      // thêm header custom nếu có
+      if (this.#HEADERS) {
+        OPTIONS.headers = { ...OPTIONS.headers, ...this.#HEADERS }
+      }
+
+      // nếu có body thì thêm vào
+      if (body) OPTIONS.body = body
+
+      /**gọi api */
+      const RES = await fetch(uri, OPTIONS)
+
+      // nếu không phải json thì trả về dữ liệu gốc
+      if (!data.is_json) return RES
+
+      /**chuyển dữ liệu về json */
+      const RESULT = await RES.json()
+
+      // có message thì là bị lỗi
+      if (RESULT?.message || RESULT?.code !== 200) throw RESULT
+
+      // nếu là raw thì trả về nguyên bản
+      // if (is_raw) return RESULT
+
+      // fix falsy value
+      if (RESULT?.data === false || RESULT?.data === 0 || RESULT?.data === '')
+        return RESULT?.data
+
+      // trả về dữ liệu
+      return RESULT?.data || RESULT
+    } catch (e: any) {
+      throw ErrorHandler.parse(e, data.is_raw_error)
+    }
+  }
+
   /**gọi API dạng get */
   protected get(
     path: string,
     qs?: Record<string, any>,
-    is_raw_error?: boolean
+    is_raw_error?: boolean,
   ): Promise<any> {
     return this.#request(true, false, path, 'GET', qs, undefined, is_raw_error)
   }
@@ -102,7 +188,7 @@ export class ApiManager {
   protected post(
     path: string,
     body?: Record<string, any>,
-    is_raw_error?: boolean
+    is_raw_error?: boolean,
   ): Promise<any> {
     return this.#request(
       true,
@@ -111,7 +197,7 @@ export class ApiManager {
       'POST',
       undefined,
       body,
-      is_raw_error
+      is_raw_error,
     )
   }
   /**gọi API dạng form upload */
@@ -119,7 +205,7 @@ export class ApiManager {
     path: string,
     qs?: Record<string, any>,
     body?: FormData,
-    is_raw_error?: boolean
+    is_raw_error?: boolean,
   ): Promise<any> {
     return this.#request(true, true, path, 'POST', qs, body, is_raw_error)
   }

@@ -75,7 +75,6 @@ const $props = withDefaults(
 function loadImageUrl(page_id?: string) {
   /**id của trang */
   const PAGE_ID = page_id || $props.page_info?.fb_page_id
-
   switch ($props.page_info?.type) {
     case 'ZALO_PERSONAL':
       return $cdn.zlpPageAvt(PAGE_ID)
@@ -83,6 +82,8 @@ function loadImageUrl(page_id?: string) {
       return $cdn.fbPageAvt(PAGE_ID)
     case 'FB_INSTAGRAM':
       return $cdn.igPageAvt(PAGE_ID)
+    case 'TIKTOK':
+      return $cdn.tiktokPageAvt(PAGE_ID)
     default:
       return $props.page_info?.avatar
   }

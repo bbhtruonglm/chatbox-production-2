@@ -24,7 +24,8 @@ const $props = withDefaults(
 /**xử lý lại kiểu thời gian của tin nhắn hiện tại */
 function formatNowDate() {
   /**thời gian của cua tin nhắn hiện tại */
-  const DATE = $props.now_message.time || $props.now_message.createdAt
+  const DATE = $props.now_message?.createdAt
+  // const DATE = $props.now_message.time || $props.now_message.createdAt
 
   // format theo template
   return date_format(new Date(DATE), 'HH:mm, dd/MM/yyyy')
@@ -32,11 +33,13 @@ function formatNowDate() {
 /**chỉ hiện thị khoảng ngắt thời gian khi cách ngày */
 function isShowTimeSplit() {
   /**thời gian của tin nhắn hiện tại */
-  const NOW_DATE = $props.now_message.time || $props.now_message.createdAt
+  const NOW_DATE = $props.now_message?.createdAt
+  // const NOW_DATE = $props.now_message.time || $props.now_message.createdAt
   /**thời gian của tin nhắn trước đó */
-  const BEFORE_DATE =
-    $props.before_message?.time || $props.before_message?.createdAt
-
+  const BEFORE_DATE = $props.before_message?.createdAt
+  // const BEFORE_DATE =
+  //   $props.before_message?.time || $props.before_message?.createdAt
+  
   // nếu trước đó không có tin nhắn thì thôi
   if (!BEFORE_DATE || !NOW_DATE) return false
 

@@ -17,22 +17,22 @@
 </template>
 
 <script setup lang="ts">
-import { useCommonStore } from '@/stores'
+import { useCommonStore, useOrgStore } from '@/stores'
+import { useKeyboardShortcut } from '@/views/composables/useKeyboardShortcut'
+import { container } from 'tsyringe'
+import { onMounted } from 'vue'
+import { setItem } from './service/helper/localStorage'
+import { N4SerivcePublicPartner } from './utils/api/N4Service/Partner'
+import { error } from './utils/decorator/Error'
+import { Toast } from './utils/helper/Alert/Toast'
+import { QueryString, type IQueryString } from './utils/helper/QueryString'
 
 import Loading from '@/components/Loading.vue'
-import Network from './components/Network.vue'
 import AdBlocker from './components/AdBlocker.vue'
-import { onMounted } from 'vue'
-import { Toast } from './utils/helper/Alert/Toast'
-import { N4SerivcePublicPartner } from './utils/api/N4Service/Partner'
-import { setItem } from './service/helper/localStorage'
-import { error } from './utils/decorator/Error'
-import { container } from 'tsyringe'
-import { QueryString, type IQueryString } from './utils/helper/QueryString'
-import { useKeyboardShortcut } from '@/views/composables/useKeyboardShortcut'
-import { confirm } from './service/helper/alert'
+import Network from './components/Network.vue'
 
 const commonStore = useCommonStore()
+const orgStore = useOrgStore()
 const $toast = container.resolve(Toast)
 
 useKeyboardShortcut()
@@ -82,6 +82,9 @@ class Main {
 
     // lưu ref vào local storage
     setItem('selected_org_id', ORG_ID)
+
+    // lưu lại selected_org_id vào store vì trước đó store đang lấy từ local cần phải ghi đè lại
+    orgStore.selected_org_id = ORG_ID
   }
   /**ghi đè lại token lấy từ param, phục vụ cho trường hợp mở từ app mobile */
   getParamToken() {

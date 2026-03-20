@@ -15,7 +15,9 @@
           {{ $t('v1.view.main.dashboard.widget.popular') }}
         </template>
         <template #item>
-          <div class="grid gap-y-3 gap-x-6 grid-cols-4">
+          <div
+            class="grid gap-y-3 gap-x-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+          >
             <template v-for="widget of widget_list">
               <Item
                 v-if="filterWidget(widget)"
@@ -115,14 +117,14 @@ function getWidget() {
 
             widget_list.value = r
             cb()
-          }
+          },
         ),
     ],
     e => {
       widgetStore.is_loading = false
 
       if (e) return toastError(e)
-    }
+    },
   )
 }
 /**lấy danh sách widget khi thay đổi giá trị tìm kiếm */

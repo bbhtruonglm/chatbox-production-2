@@ -148,21 +148,29 @@
               selected_category === 'NEW',
           }"
         >
-          <div
-            v-for="folder of folder_list"
-            @click="selectFolder(folder)"
-            :class="{ 'border-blue-700': folder._id === selected_folder?._id }"
-            class="w-full overflow-hidden relative cursor-pointer border-[3px] rounded-xl flex flex-col group items-center"
-          >
+          <template v-for="group in display_folder_groups" :key="'group-' + group.staff_id">
             <div
-              @click.stop="$event => openFolderMenu($event, folder)"
+              v-if="group.staff_id"
+              class="col-span-full font-semibold text-sm mt-2 text-slate-700"
+            >
+             <span class=""> {{ $t('v1.common.page') }}:</span> <span class="font-medium text-blue-700">{{ group.name || group.staff_id }}</span>
+            </div>
+            <div
+              v-for="folder of group.folders"
+              :key="folder._id"
+              @click="selectFolder(folder)"
+              :class="{ 'border-blue-700': folder._id === selected_folder?._id }"
+              class="w-full h-[80px] overflow-hidden relative cursor-pointer border-[3px] rounded-xl flex flex-col group items-center"
+            >
+              <div
+                @click.stop="$event => openFolderMenu($event, folder)"
               class="absolute top-1 right-1 px-0.5 bg-slate-200 border border-slate-500 rounded-md hidden group-hover:block"
             >
               <DotIcon class="w-4 h-4 text-slate-500" />
             </div>
             <FolderIcon class="w-12 h-12 text-slate-700" />
             <div
-              class="truncate w-full text-center text-xs font-medium h-6 flex-shrink-0 px-2"
+              class="w-full text-center flex-shrink-0 px-2 pb-1"
             >
               <input
                 :id="`edit-folder-title-${folder._id}`"
@@ -175,10 +183,23 @@
                 class="border w-full rounded text-center px-2 bg-slate-50 py-0.5"
               />
               <template v-else>
-                {{ folder.title }}
+                <div class="truncate text-[10px] text-gray-400">
+                  {{
+                    folder.updatedAt
+                      ? $date_handle.format(
+                          folder.updatedAt,
+                          'HH:mm dd/MM/yyyy'
+                        )
+                      : ''
+                  }}
+                </div>
+                <div class="truncate text-xs font-medium">
+                  {{ folder.title }}
+                </div>
               </template>
             </div>
           </div>
+          </template>
           <div
             v-for="file of file_list"
             @click="selectFile(file)"
@@ -320,6 +341,8 @@
 </template>
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
+import { container } from 'tsyringe'
+import { DateHandle } from '@/utils/helper/DateHandle'
 import { eachOfLimit, waterfall } from 'async'
 import {
   read_file_album,
@@ -331,7 +354,8 @@ import {
   create_folder_album,
 } from '@/service/api/chatbox/n6-static'
 import { useConversationStore, useOrgStore } from '@/stores'
-import { confirm, toast, toastError } from '@/service/helper/alert'
+import { confirm, modal_input, toast, toastError } from '@/service/helper/alert'
+import { validateFileSize } from '@/service/helper/file'
 import { useI18n } from 'vue-i18n'
 import {
   debounce,
@@ -370,7 +394,13 @@ import { getItem, setItem } from '@/service/helper/localStorage'
 import ModalChangeAlbumSource from './ModalChangeAlbumSource.vue'
 import Pagination from './Pagination.vue'
 import { normalizeFileName, normalizePageIds } from '@/utils/helper/Validate'
+import { resizeImage } from '@/utils/helper/ResizeImage/image-resize.main'
 
+import {usePageStore } from '@/stores'
+
+
+
+const pageStore = usePageStore()
 /**các giá tị của danh mục */
 type CategoryType = 'NEW' | 'FOLDER'
 
@@ -382,6 +412,8 @@ const conversationStore = useConversationStore()
 /** Thoong tin org trong store*/
 const orgStore = useOrgStore()
 
+const $date_handle = container.resolve(DateHandle)
+
 /**cache câu trả lời, hạnc chế gọi API liên tục mỗi lần click */
 const CACHE_LIST_ALBUM = new Map<string, any[]>()
 
@@ -392,19 +424,13 @@ const LIMIT = 80
 const current_page = ref(0)
 
 /**
- *  Xác định `page_id` hợp lệ để thao tác album
+ * Xác định `page_id` hợp lệ để thao tác album
  *
  * @description
- * Hàm này tìm ra `page_id` ưu tiên sử dụng theo thứ tự:
- * 1. Nếu localStorage (`album_page_id`) có chứa mảng tương ứng với `fb_page_id` hiện tại → lấy phần tử đầu tiên.
- * 2. Nếu không có `fb_page_id` trong map → lấy key đầu tiên trong map và dùng phần tử đầu tiên trong mảng đó.
- * 3. Nếu map trống → trả về ID mặc định (fb_page_id hoặc chuỗi rỗng).
+ * - `PAGE_ID_MAP` = localStorage('album_page_id') — dạng Record<string, string[]>
+ * - `DEFAULT_ID` = fb_page_id của cuộc hội thoại hiện tại
  *
- * @returns {string} `new_page_id` — ID trang hợp lệ để thao tác.
- *
- * @example
- * const pageId = resolvePageIdForAlbum();
- * create_folder_album({ page_id: pageId, title: "New Folder" });
+ * @returns {string} page_id hợp lệ để thao tác album
  */
 function resolvePageIdForAlbum(): string {
   /** Lấy dữ liệu map page_id từ localStorage */
@@ -417,31 +443,39 @@ function resolvePageIdForAlbum(): string {
   const DEFAULT_ID: string =
     conversationStore.select_conversation?.fb_page_id || ''
 
-  /** Biến kết quả khởi tạo bằng DEFAULT_ID */
-  let new_page_id: string = DEFAULT_ID
+  // CASE 1: PAGE_ID_MAP = {}, DEFAULT_ID = "page_A" → return "page_A"
+  // Map rỗng → dùng DEFAULT_ID
+  if (size(PAGE_ID_MAP) === 0) return DEFAULT_ID
 
-  /** Kiểm tra map có dữ liệu không */
-  if (size(PAGE_ID_MAP) > 0) {
-    /** Lấy danh sách page tương ứng với DEFAULT_ID (nếu có) */
-    const DEFAULT_PAGE_LIST = get(PAGE_ID_MAP, DEFAULT_ID, [])
+  /** Lấy danh sách page tương ứng với DEFAULT_ID (nếu có) */
+  const DEFAULT_PAGE_LIST = get(PAGE_ID_MAP, DEFAULT_ID, [])
 
-    /** Nếu có danh sách hợp lệ → lấy phần tử đầu tiên */
-    if (isArray(DEFAULT_PAGE_LIST) && size(DEFAULT_PAGE_LIST) > 0) {
-      new_page_id = first(DEFAULT_PAGE_LIST) as string
-    } else {
-      /** Nếu không có DEFAULT_ID → chọn phần tử đầu tiên trong toàn bộ map */
-      const FIRST_KEY = first(keys(PAGE_ID_MAP))
-      if (FIRST_KEY) {
-        const FIRST_ARRAY = get(PAGE_ID_MAP, FIRST_KEY, [])
-        if (isArray(FIRST_ARRAY) && size(FIRST_ARRAY) > 0) {
-          new_page_id = first(FIRST_ARRAY) as string
-        }
-      }
-    }
+  // CASE 2: PAGE_ID_MAP = { "page_X": ["page_X"] }, DEFAULT_ID = "page_A" → return "page_A"
+  // DEFAULT_ID không có trong map → giữ nguyên DEFAULT_ID
+  if (!keys(PAGE_ID_MAP).includes(DEFAULT_ID)) return DEFAULT_ID
+
+  // CASE 3a: PAGE_ID_MAP = { "page_A": ["page_A", "page_B"] }, DEFAULT_ID = "page_A" → return "page_A"
+  // CASE 3b: PAGE_ID_MAP = { "page_A": ["page_B", "page_C"] }, DEFAULT_ID = "page_A" → return "page_B" (first)
+  // DEFAULT_ID có trong map VÀ mảng hợp lệ
+  if (isArray(DEFAULT_PAGE_LIST) && size(DEFAULT_PAGE_LIST) > 0) {
+    // Nếu DEFAULT_ID nằm trong danh sách → dùng nó, ngược lại → lấy phần tử đầu tiên
+    return DEFAULT_PAGE_LIST.includes(DEFAULT_ID)
+      ? DEFAULT_ID
+      : (first(DEFAULT_PAGE_LIST) as string)
   }
 
-  /** Trả về ID hợp lệ */
-  return new_page_id
+  // CASE 4: PAGE_ID_MAP = { "page_A": [], "page_X": ["page_X", "page_Y"] }, DEFAULT_ID = "page_A"
+  //         → DEFAULT_PAGE_LIST = [] → fallback lấy từ page khác → return "page_X"
+  // Case này khó xảy, chỉ bị khi user xoá page_id trong localStorage
+  /** DEFAULT_ID có trong map nhưng mảng rỗng → lấy phần tử đầu từ page khác */
+  const FIRST_KEY = first(keys(PAGE_ID_MAP))
+  /** Lấy mảng tương ứng với key đầu tiên */
+  const FIRST_ARRAY = FIRST_KEY ? get(PAGE_ID_MAP, FIRST_KEY, []) : []
+
+  // Nếu mảng hợp lệ → lấy phần tử đầu tiên, ngược lại → dùng DEFAULT_ID
+  return isArray(FIRST_ARRAY) && size(FIRST_ARRAY) > 0
+    ? (first(FIRST_ARRAY) as string)
+    : DEFAULT_ID
 }
 
 /** Hàm xử lý khi chuyển trang
@@ -485,6 +519,34 @@ const is_done = ref(false)
 const skip = ref(0)
 /**thư mục được chọn để cài đặt */
 const selected_folder = ref<FolderInfo>()
+
+/** Danh sách thư mục hiển thị (đã xử lý gom nhóm theo staff_id) */
+const display_folder_groups = computed(() => {
+  const lst = folder_list.value || []
+  // Kiểm tra xem trên ds hiện tại có nhiều fb_page_id không
+  const has_different_staff = new Set(lst.map(i => i.fb_page_id).filter(Boolean)).size > 1
+  
+  // Nếu tất cả thư mục thuộc cùng một trang, trả về một nhóm duy nhất không có tiêu đề để hiển thị như bình thường
+  if (!has_different_staff) {
+    return [{ staff_id: '', name: '', folders: lst }]
+  }
+  
+  // Khởi tạo Map để gom nhóm các thư mục theo ID trang (fb_page_id)
+  const groups = new Map<string, FolderInfo[]>()
+  lst.forEach(f => {
+    // Lấy ID trang, nếu không có thì xếp vào nhóm 'Khác'
+    const g_id = f.fb_page_id || 'Khác'
+    if (!groups.has(g_id)) groups.set(g_id, [])
+    groups.get(g_id)!.push(f)
+  })
+  
+  // Chuyển đổi Map thành mảng các đối tượng nhóm để hiển thị lên giao diện kèm theo tên trang từ store
+  return Array.from(groups.entries()).map(([g_id, folders]) => ({
+    staff_id: g_id,
+    name: pageStore.all_page_list[g_id]?.page?.name || g_id,
+    folders
+  }))
+})
 
 /**id trang đang được chọn */
 const page_id = ref<string>('')
@@ -747,8 +809,6 @@ function getFolders(is_change_page = false, ids: string[] = []) {
           (e, r) => {
             if (e) return cb(e)
 
-            console.log(r, 'rrrrrr')
-
             /** Nếu dữ liệu ít hơn LIMIT => không còn trang kế tiếp */
             if (!r?.length || r.length < LIMIT) is_done.value = true
 
@@ -863,7 +923,8 @@ function deleteFile(select_file: FileInfo) {
   delete_file_album(
     {
       // page_id: conversationStore.select_conversation?.fb_page_id!,
-      page_id: NEW_PAGE_ID,
+      // page_id: NEW_PAGE_ID,
+      page_id: select_file.fb_page_id,
       file_id: select_file._id,
     },
     (e, r) => {
@@ -878,35 +939,36 @@ function deleteFile(select_file: FileInfo) {
 /** xóa các tập tin đã chọn */
 async function deleteSelectFile() {
   try {
-    /** nếu đang chạy thì thôi */
+    // nếu đang chạy thì thôi
     if (is_loading.value) return
 
-    /** gắn cờ đang chạy */
+    // gắn cờ đang chạy
     is_loading.value = true
 
     /** danh sách tập tin */
     const FILE_LIST = file_list.value
 
-    /** lặp xóa từng tập tin đã chọn */
+    // lặp xóa từng tập tin đã chọn
     for (let i = FILE_LIST?.length; i >= 0; i--) {
       /** dữ liệu của tập tin */
       const FILE = FILE_LIST[i]
 
-      /** nếu đang được chọn thì xóa */
+      // nếu đang được chọn thì xóa
       if (FILE?.is_select) {
         await new Promise((resolve, reject) => {
-          /** call api xóa tập tin */
+          // call api xóa tập tin
           delete_file_album(
             {
               // page_id: conversationStore.select_conversation?.fb_page_id!,
-              page_id: page_id.value,
+              // page_id: page_id.value,
+              page_id: FILE?.fb_page_id || '',
               file_id: FILE._id,
             },
             (e, r) => {
-              /** nếu thành công */
+              // nếu thành công
               if (r.code === 200) {
                 resolve(r)
-                /** xóa khoa khoi danh sach */
+                // xóa khoa khoi danh sach
                 file_list.value?.splice(i, 1)
                 file_list_root.value?.splice(i, 1)
               }
@@ -940,29 +1002,40 @@ function confirmDeleteFile() {
 
 /**
  * Tạo mới một thư mục (album) cho trang Facebook đang được chọn.
+ * Hiển thị popup nhập tên thư mục trước khi tạo.
  */
 function createFolder(): void {
-  /** Bật cờ đang chạy */
-  is_loading.value = true
+  /** Hiện popup nhập tên thư mục */
+  modal_input(
+    $t('v1.view.main.dashboard.chat.album.folder_new_name'),
+    $t('v1.view.main.dashboard.chat.album.folder_new_name'),
+    (is_cancel, folder_title) => {
+      /** Nếu cancel hoặc không nhập tên thì thoát */
+      if (is_cancel || !folder_title?.trim()) return
 
-  /** Xác định page_id hợp lệ */
-  const NEW_PAGE_ID = resolvePageIdForAlbum()
+      /** Bật cờ đang chạy */
+      is_loading.value = true
 
-  /** Gọi API tạo mới thư mục */
-  create_folder_album(
-    {
-      page_id: NEW_PAGE_ID,
-      title: $t('v1.view.main.dashboard.chat.album.folder_new_name'),
-    },
-    (e, r) => {
-      /** Tắt cờ đang chạy */
-      is_loading.value = false
+      /** Xác định page_id hợp lệ */
+      const NEW_PAGE_ID = resolvePageIdForAlbum()
 
-      /** Reset dữ liệu và gọi lại danh sách */
-      folder_list.value = []
-      skip.value = 0
-      is_done.value = false
-      getFolders()
+      /** Gọi API tạo mới thư mục */
+      create_folder_album(
+        {
+          page_id: NEW_PAGE_ID,
+          title: folder_title.trim(),
+        },
+        (e, r) => {
+          /** Tắt cờ đang chạy */
+          is_loading.value = false
+
+          /** Reset dữ liệu và gọi lại danh sách */
+          folder_list.value = []
+          skip.value = 0
+          is_done.value = false
+          getFolders()
+        }
+      )
     }
   )
 }
@@ -982,7 +1055,8 @@ function deleteFolder() {
   delete_folder_album(
     {
       // page_id: conversationStore.select_conversation?.fb_page_id!,
-      page_id: NEW_PAGE_ID,
+      // page_id: NEW_PAGE_ID,
+      page_id: selected_folder.value?.fb_page_id,
       folder_id: selected_folder.value?._id,
     },
     (e, r) => {
@@ -1127,6 +1201,20 @@ function uploadFileFromDevice() {
   INPUT.onchange = () => {
     /**  fix null here */
     if (!INPUT.files || INPUT.files.length === 0) return
+
+    /** lọc các file vượt quá 20MB */
+    const VALID_FILES = Array.from(INPUT.files).filter(file => {
+      // kiểm tra kích thước file
+      if (!validateFileSize(file)) {
+        toast('error', `File "${file.name}" vượt quá 20MB`)
+        return false
+      }
+      return true
+    })
+
+    // nếu không còn file hợp lệ thì dừng
+    if (VALID_FILES.length === 0) return
+
     /** Hiển thị trạng thái loading trong giao diện */
     is_loading.value = true
 
@@ -1135,36 +1223,10 @@ function uploadFileFromDevice() {
      * dùng `eachOfLimit` để xử lý bất đồng bộ có kiểm soát.
      */
     eachOfLimit(
-      INPUT.files,
+      VALID_FILES,
       1,
       (file: File, i, next) => {
-        /** 🔹 Chuẩn hóa tên file để tránh lỗi ký tự đặc biệt */
-        const CLEAN_NAME = normalizeFileName(file.name)
-
-        /** Tạo lại đối tượng File mới với tên đã chuẩn hóa */
-        const NEW_FILE = new File([file], CLEAN_NAME, { type: file.type })
-
-        /** Tạo FormData chứa file để upload */
-        const FORM = new FormData()
-        FORM.append('file', NEW_FILE)
-
-        /** Xác định page_id hợp lệ */
-        const NEW_PAGE_ID = resolvePageIdForAlbum()
-
-        /**
-         * Gọi API upload_file_album để tải file lên server.
-         * Truyền kèm page_id để xác định album đích.
-         * Khi upload xong, thêm file mới vào danh sách hiển thị.
-         */
-        upload_file_album(
-          { page_id: NEW_PAGE_ID, folder_id: selected_folder_id.value },
-          FORM,
-          (e, r) => {
-            if (r)
-              addDataToFileList([r], 'upload') /** Cập nhật UI sau upload */
-            next() /** Tiếp tục upload file tiếp theo */
-          }
-        )
+        uploadFile(file, next)
       },
       /** Callback sau khi tất cả file đã upload xong */
       e => {
@@ -1182,6 +1244,60 @@ function uploadFileFromDevice() {
 
   /** Kích hoạt click() để mở hộp thoại chọn file của hệ thống */
   INPUT.click()
+}
+
+/** hàm upload file */
+async function uploadFile(file: File, next: Function) {
+  /** 🔹 Chuẩn hóa tên file để tránh lỗi ký tự đặc biệt */
+  const CLEAN_NAME = normalizeFileName(file.name)
+
+  /** dữ liệu file up lên */
+  let upload_file: File | Blob | null = null
+
+  // nếu là file hình ảnh
+  if (file.type?.includes('image')) {
+    /** Ảnh sau khi resize */
+    const IMG = await resizeImage({
+      file,
+      max_size: 1000,
+      quality: 1,
+      type: file.type,
+    })
+
+    /** dữ liệu file hình ảnh sau khi resize */
+    upload_file = IMG.blob!
+  } else {
+    /** dữ liệu file khác hình ảnh */
+    upload_file = file
+  }
+
+  /** Tạo FormData chứa file để upload */
+  const FORM = new FormData()
+  FORM.append('file', new File([upload_file], CLEAN_NAME, { type: file.type }))
+
+  /** Xác định page_id hợp lệ */
+  const NEW_PAGE_ID = resolvePageIdForAlbum()
+
+  /**
+   * Gọi API upload_file_album để tải file lên server.
+   * Truyền kèm page_id để xác định album đích.
+   * Khi upload xong, thêm file mới vào danh sách hiển thị.
+   */
+  upload_file_album(
+    {
+      page_id: selected_folder.value?.fb_page_id || NEW_PAGE_ID,
+      // page_id: NEW_PAGE_ID,
+      folder_id: selected_folder_id.value,
+    },
+    FORM,
+    (e, r) => {
+      /** Cập nhật UI sau upload */
+      if (r) {
+        addDataToFileList([r], 'upload')
+      }
+      next() /** Tiếp tục upload file tiếp theo */
+    }
+  )
 }
 
 /** hàm copy link của file vào clipboard */

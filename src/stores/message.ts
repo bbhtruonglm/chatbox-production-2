@@ -21,9 +21,13 @@ export const useMessageStore = defineStore('message_store', () => {
   const list_message_id = ref('list-message')
   /**danh sách tin nhắn hiện tại */
   const list_message = ref<MessageInfo[]>([])
+  /** map danh sách tin nhắn bằng message_id */
+  const map_list_message_by_id = ref(new Map<string, MessageInfo>())
 
   /**danh sách tin nhắn tạm vừa được gửi */
   const send_message_list = ref<TempSendMessage[]>([])
+  /**danh sách timer clear tin nhắn tạm */
+  const timer_clear_send_message_list = ref(new Map<string, number>())
 
   /**danh sách dữ liệu file được cache để không phải gọi lại nhiều lần */
   const attachment_list = ref<AttachmentCacheList>({})
@@ -74,7 +78,6 @@ export const useMessageStore = defineStore('message_store', () => {
   }
   /**xoá dữ liệu trả lời bình luận */
   function clearReplyMessage() {
-    console.log('clearReplyMessage')
     reply_message.value = undefined
   }
 
@@ -106,7 +109,9 @@ export const useMessageStore = defineStore('message_store', () => {
   return {
     list_message_id,
     list_message,
+    map_list_message_by_id,
     send_message_list,
+    timer_clear_send_message_list,
     attachment_list,
     select_attachment,
     select_staff_read_id,

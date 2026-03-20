@@ -41,6 +41,7 @@
     "lodash": "^4.17.21",
     "lucide-vue-next": "^0.544.0",
     "marked": "^15.0.12",
+    "mitt": "^3.0.1",
     "pinia": "^2.0.28",
     "postcss": "^8.4.19",
     "query-string": "^8.1.0",

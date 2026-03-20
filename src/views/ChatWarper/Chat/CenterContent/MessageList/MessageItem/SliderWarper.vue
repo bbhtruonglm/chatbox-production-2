@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative max-w-full">
     <template v-if="isShowArrow()">
       <ArrowDownIcon
         @click="moveSlider('LEFT')"

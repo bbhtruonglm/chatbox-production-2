@@ -30,6 +30,7 @@
         />
         <img
           v-if="file.preview"
+          :id="file.id"
           class="attachment-size"
           :src="file.preview"
         />

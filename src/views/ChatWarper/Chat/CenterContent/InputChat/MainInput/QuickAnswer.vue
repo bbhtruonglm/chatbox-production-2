@@ -504,13 +504,18 @@ function selectQuickAnswer(answer: QuickAnswerInfo) {
   // nếu trả lời nhanh có ảnh thì thêm vào danh sách tập tin đính kèm
   if (size(list_images))
     messageStore.upload_file_list =
-      list_images?.map(url => ({
-        type: 'image',
-        is_done: false,
-        is_loading: false,
-        preview: url,
-        url,
-      })) || []
+      list_images?.map(url => {
+        /** Id random cho ảnh để thêm vào id img khi render */
+        const ID = crypto.randomUUID()
+        return {
+          id: ID,
+          type: 'image',
+          is_done: false,
+          is_loading: false,
+          preview: url,
+          url,
+        }
+      }) || []
 
   // tắt modal
   commonStore.is_show_quick_answer = false
@@ -839,7 +844,6 @@ function handleChatValue($event: KeyboardEvent) {
 
   /**nội dung chat */
   const INPUT_VALUE = ($event.target as HTMLDivElement)?.innerText
-  console.log(commonStore.is_show_quick_answer, 'nnnnnnnnnnnnn')
   /** nếu modal đã mở */
   if (commonStore.is_show_quick_answer) onModalShowed(KEY, INPUT_VALUE)
   /** nếu modal chưa mở */ else onModalHid(INPUT_VALUE)
