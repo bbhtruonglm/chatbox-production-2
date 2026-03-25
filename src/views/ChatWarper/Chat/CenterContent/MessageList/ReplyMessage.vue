@@ -1,6 +1,6 @@
 <template>
   <div
-    class="message-box bg-slate-100 text-slate-500 relative -bottom-2"
+    class="message-box bg-slate-100 text-slate-500 relative -bottom-2 break-words"
     :class="{
       'border border-b-0 border-red-500 rounded-b-none': is_error,
     }"

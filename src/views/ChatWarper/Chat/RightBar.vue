@@ -191,7 +191,7 @@ import {
   useConversationStore,
   useOrgStore,
   usePageStore,
-  useWidgetStore,
+  useWidgetStore
 } from '@/stores'
 import { LocalStorage } from '@/utils/helper/LocalStorage'
 import { sortBy } from 'lodash'
@@ -202,8 +202,8 @@ import { useRouter } from 'vue-router'
 import Dropdown from '@/components/Dropdown.vue'
 import AiJourney from '@/views/ChatWarper/Chat/CenterContent/MessageList/AiJourney.vue'
 import PostRightBar from '@/views/ChatWarper/Chat/RightBar/PostRightBar.vue'
-import WidgetSorting from '@/views/ChatWarper/Chat/RightBar/WidgetSorting.vue'
 import SkeletonLoading from '@/views/ChatWarper/Chat/RightBar/SkeletonLoading.vue'
+import WidgetSorting from '@/views/ChatWarper/Chat/RightBar/WidgetSorting.vue'
 import { useWidget } from '@/views/composables/useWidget'
 
 import { CheckIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'

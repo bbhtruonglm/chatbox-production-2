@@ -9,7 +9,7 @@
       :src="loadImageUrl()"
       @error="onImageError"
       @load="removeAnimatePulse"
-      class="w-full h-full"
+      class="w-full h-full object-cover"
     />
   </div>
 </template>

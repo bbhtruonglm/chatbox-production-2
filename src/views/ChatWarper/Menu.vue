@@ -11,7 +11,7 @@
                   orgStore.selected_org_info?.org_info?.org_avatar
                 "
                 :src="orgStore.selected_org_info?.org_info?.org_avatar"
-                class="w-full h-full rounded-full"
+                class="w-full h-full rounded-full object-cover"
               />
               <img
                 v-else

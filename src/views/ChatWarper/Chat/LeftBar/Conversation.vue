@@ -50,6 +50,7 @@
   </template>
 </template>
 <script setup lang="ts">
+import { listenerEventBus } from '@/event'
 import {
   read_conversation,
   reset_read_conversation,
@@ -60,7 +61,6 @@ import {
   useChatbotUserStore,
   useCommonStore,
   useConversationStore,
-  useMessageStore,
   useOrgStore,
   usePageStore,
 } from '@/stores'
@@ -69,15 +69,13 @@ import { error } from '@/utils/decorator/Error'
 import { loadingV2 } from '@/utils/decorator/Loading'
 import { waterfall } from 'async'
 import { differenceInHours } from 'date-fns'
-import { find, keys, map, mapValues, pick, set, size } from 'lodash'
+import { find, keys, map, mapValues, orderBy, pick, set, size } from 'lodash'
 import { container } from 'tsyringe'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RecycleScroller } from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
-import { listenerEventBus } from '@/event'
 
-import Loading from '@/components/Loading.vue'
 import ConversationItem from '@/views/ChatWarper/Chat/LeftBar/Conversation/ConversationItem.vue'
 import SkeletonLoading from '@/views/ChatWarper/Chat/LeftBar/Conversation/SkeletonLoading.vue'
 
@@ -111,7 +109,6 @@ const pageStore = usePageStore()
 const conversationStore = useConversationStore()
 const commonStore = useCommonStore()
 const chatbotUserStore = useChatbotUserStore()
-const messageStore = useMessageStore()
 const orgStore = useOrgStore()
 
 /**có đang load hội thoại hay không */
@@ -169,6 +166,81 @@ class Main {
   }
 
   /**
+   * Tính toán các cấu hình hội thoại đặc biệt (SORT, OVERWRITE_FILTER).
+   * @returns Object chứa SORT, và OVERWRITE_FILTER.
+   */
+  private calcConversationSpecialConfig() {
+    /** cấu hình trang đặc biệt */
+    const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
+
+    /** sort hội thoại */
+    const SORT =
+      SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD'
+        ? 'unread_message_amount:desc,last_message_time:desc'
+        : undefined
+
+    /** ghi đè 1 số lọc tin nhắn */
+    const OVERWRITE_FILTER: FilterConversation = {}
+
+    /** chỉ cho hiện hội thoại của nhân viên và nếu không phải là chế độ xem bài viết */
+    if (
+      SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff &&
+      conversationStore.option_filter_page_data.conversation_type !== 'POST'
+    ) {
+      /** tạo ra filter nhân viên */
+      OVERWRITE_FILTER.staff_id = []
+
+      /** thêm id mới */
+      if (chatbotUserStore.chatbot_user?.user_id) {
+        OVERWRITE_FILTER.staff_id?.push(chatbotUserStore.chatbot_user?.user_id)
+      }
+    }
+
+    return {
+      SORT,
+      OVERWRITE_FILTER,
+    }
+  }
+
+  /** format lại dữ liệu trả về của danh sách hội thoại */
+  private formatConversations(data?: ConversationList) {
+    /** format dữ liệu trả về */
+    mapValues(data, (conversation, key) => {
+      /** tạo ra key cho vitual scroll */
+      conversation.data_key = key
+
+      /** bỏ qua record của page chat cho page */
+      if (conversation.fb_page_id === conversation.fb_client_id)
+        delete data?.[key]
+    })
+
+    return data
+  }
+
+  /** nhân sự có quyền xem hội thoại không */
+  private isPermissionViewConversation(
+    conversation?: ConversationInfo,
+  ): boolean {
+    /** id của nhân sự hiện tại */
+    const CURRENT_STAFF_ID =
+      chatbotUserStore.chatbot_user?.user_id ||
+      conversationStore.select_conversation?.fb_staff_id
+
+    /** trạng thái của tài khoản hiện tại có phải là admin hay ko? */
+    const IS_ADMIN = conversationStore.isCurrentStaffAdmin()
+
+    // nếu bật chỉ hiện hội thoại với nhân viên được assign và
+    // id hiện tại không phải của nhân sự đó và
+    // không phải admin thì không có quyền xem
+    return !(
+      orgStore.selected_org_info?.org_config
+        ?.org_is_only_visible_client_of_staff &&
+      conversation?.fb_staff_id !== CURRENT_STAFF_ID &&
+      !IS_ADMIN
+    )
+  }
+
+  /**
    * đọc danh sách hội thoại
    * @param is_first_time có phải lần đầu tiên không
    * @param is_pick_first có chọn hội thoại đầu tiên không
@@ -176,8 +248,11 @@ class Main {
   @loadingV2(is_loading, 'value')
   @error()
   async getConversation(is_first_time?: boolean, is_pick_first?: boolean) {
-    /** lưu trạng thái có phải load lần đầu không */
-    conversationStore.is_loading_list = !!is_first_time
+    // nếu là load lần đầu thì thêm loading
+    if (is_first_time) {
+      /** lưu trạng thái có phải load lần đầu không */
+      conversationStore.is_loading_list = true
+    }
 
     /** nếu đang mất mạng thì không cho gọi api */
     if (!commonStore.is_connected_internet) return
@@ -187,37 +262,8 @@ class Main {
 
     /**danh sách id page */
     const PAGE_IDS = keys(pageStore.selected_page_id_list)
-    /**cấu hình trang đặc biệt */
-    const SPECIAL_PAGE_CONFIG = this.SERVICE_CALC_SPECIAL_PAGE_CONFIGS.exec()
-
-    /**sort hội thoại */
-    const SORT =
-      SPECIAL_PAGE_CONFIG?.sort_conversation === 'UNREAD'
-        ? 'unread_message_amount:desc,last_message_time:desc'
-        : undefined
-
-    /**ghi đè 1 số lọc tin nhắn */
-    const OVERWRITE_FILTER: FilterConversation = {}
-
-    /** chỉ cho hiện hội thoại của nhân viên và */
-    /** nếu không phải là chế độ xem bài viết */
-    if (
-      SPECIAL_PAGE_CONFIG.is_only_visible_client_of_staff &&
-      conversationStore.option_filter_page_data.conversation_type !== 'POST'
-    ) {
-      /** tạo ra filter nhân viên */
-      OVERWRITE_FILTER.staff_id = []
-
-      /** thêm id mới */
-      if (chatbotUserStore.chatbot_user?.user_id)
-        OVERWRITE_FILTER.staff_id?.push(chatbotUserStore.chatbot_user?.user_id)
-
-      /** thêm id cũ, tránh lỗi */
-      // if (chatbotUserStore.chatbot_user?.fb_staff_id)
-      //   OVERWRITE_FILTER.staff_id?.push(
-      //     chatbotUserStore.chatbot_user?.fb_staff_id,
-      //   )
-    }
+    /** tính toán các cấu hình hội thoại đặc biệt */
+    const { SORT, OVERWRITE_FILTER } = this.calcConversationSpecialConfig()
 
     /** dữ liệu hội thoại */
     let res: QueryConversationResponse
@@ -243,28 +289,21 @@ class Main {
     }
 
     /**dữ liệu hội thoại */
-    const CONVERSATIONS = res.conversation
+    let conversations = res.conversation
 
     /** gắn cờ nếu đã hết dữ liệu */
-    if (!size(CONVERSATIONS) || !res.after) is_done.value = true
+    if (!size(conversations) || !res.after) is_done.value = true
 
     /** lưu lại after mới */
     after.value = res.after
 
     /** format dữ liệu trả về */
-    mapValues(CONVERSATIONS, (conversation, key) => {
-      /** tạo ra key cho vitual scroll */
-      conversation.data_key = key
-
-      /** bỏ qua record của page chat cho page */
-      if (conversation.fb_page_id === conversation.fb_client_id)
-        delete CONVERSATIONS?.[key]
-    })
+    conversations = this.formatConversations(conversations)
 
     /** thêm vào danh sách conversation */
     conversationStore.conversation_list = {
       ...conversationStore.conversation_list,
-      ...CONVERSATIONS,
+      ...conversations,
     }
 
     /** tự động chọn khách hàng cho lần đầu tiên */
@@ -368,7 +407,7 @@ class Main {
       SPECIAL_PAGE_CONFIG?.is_only_visible_client_of_staff &&
       /** dùng cả id cũ và mới */
       !(
-        conversation?.user_id === chatbotUserStore.chatbot_user?.user_id 
+        (conversation?.user_id === chatbotUserStore.chatbot_user?.user_id)
         // ||
         // conversation?.fb_staff_id === chatbotUserStore.chatbot_user?.fb_staff_id
       )
@@ -518,8 +557,11 @@ class Main {
       }
     }
 
-    /** reset data */
-    conversationStore.conversation_list = {}
+    // nếu là lần đầu thì mới clear dữ liệu
+    if (is_pick_first) {
+      /** reset data */
+      conversationStore.conversation_list = {}
+    }
 
     /** reset phân trang */
     after.value = undefined
@@ -533,10 +575,10 @@ class Main {
     if (!is_count_conversation) return
 
     /** lấy số lượng các hội thoại chat */
-    await this.countConversation('CHAT')
+    this.countConversation('CHAT')
 
     /** lấy số lượng các hội thoại zalo */
-    await this.countConversation('POST')
+    this.countConversation('POST')
   }
   /**tự động chọn một khách hàng để hiển thị danh sách tin nhắn */
   selectDefaultConversation(is_pick_first?: boolean) {
@@ -621,25 +663,8 @@ class Main {
               /** dữ liệu của hội thoại tìm được */
               const CONVERSATION = r?.conversation?.[data_key]
 
-              /** id của nhân sự hiện tại */
-              const CURRENT_STAFF_ID =
-                chatbotUserStore.chatbot_user?.user_id ||
-                conversationStore.select_conversation?.fb_staff_id
-
-              /** trạng thái của tài khoản hiện tại có phải là admin hay ko? */
-              const IS_ADMIN = conversationStore.isCurrentStaffAdmin()
-
-              // nếu bật chỉ hiện hội thoại với nhân viên được assign và
-              // id hiện tại không phải của nhân sự đó và
-              // không phải admin thì dừng lại
-              if (
-                orgStore.selected_org_info?.org_config
-                  ?.org_is_only_visible_client_of_staff &&
-                CONVERSATION?.fb_staff_id !== CURRENT_STAFF_ID &&
-                !IS_ADMIN
-              ) {
-                cb()
-              }
+              // nếu không có quyền xem hội thoại thì dừng lại
+              if(!this.isPermissionViewConversation(CONVERSATION)) return cb()
 
               conversation = r?.conversation?.[data_key]
               cb()
@@ -728,6 +753,169 @@ class Main {
     /** reload lại trang */
     location.reload()
   }
+
+  /** hàm xử lý load 1 conversation trước */
+  @error()
+  async loadOneConversationBefore() {
+    /** nếu đang mất mạng thì không cho gọi api */
+    if (!commonStore.is_connected_internet) return
+
+    /** nếu không có org_id thì thôi */
+    if (!orgStore.selected_org_id) return
+
+    /**danh sách id page */
+    const PAGE_IDS = keys(pageStore.selected_page_id_list)
+
+    /** id page trên url */
+    const PAGE_ID_URL = ($route.query?.p || $route.query?.page_id) as string
+    /** id client trên url */
+    const USER_ID_URL = ($route.query?.u || $route.query?.user_id) as string
+    /** key của hội thoại */
+    const DATA_KEY = `${PAGE_ID_URL}_${USER_ID_URL}`
+
+    // nếu page thuộc trang đang chọn thì call api để lấy dữ liệu hội thoại
+    if (PAGE_IDS.includes(PAGE_ID_URL)) {
+      /** có tìm thấy dữ liệu hội thoại hay không */
+      const IS_HAS_CONVERSATION  = await new Promise((resolve, reject) => {
+        read_conversation(
+          {
+            page_id: [PAGE_ID_URL],
+            client_id: USER_ID_URL,
+            limit: 1,
+          },
+          (e, r) => {
+            /** tắt loading lần đầu */
+            conversationStore.is_loading_list = false
+  
+            // nếu có lỗi
+            if (e) reject(e)
+  
+            /** danh sách các hội thoại */
+            let conversations = r?.conversation
+  
+            /** dữ liệu của hội thoại tìm được */
+            const CONVERSATION = r?.conversation?.[DATA_KEY]
+  
+            // nếu không có quyền xem hội thoại thì dừng lại
+            if(!this.isPermissionViewConversation(CONVERSATION)) {
+              resolve(false)
+              return
+            }
+  
+            /** format dữ liệu trả về */
+            conversations = this.formatConversations(conversations)
+  
+            // thêm vào mảng
+            conversationStore.conversation_list = {
+              ...conversationStore.conversation_list,
+              ...conversations,
+            }
+  
+            // nếu không tìm thấy dữ liệu hội thoại nây thì thôi
+            if (!conversations?.[DATA_KEY]) {
+              resolve(false)
+              return
+            }
+            // trả về là có tìm thấy dữ liệu hội thoại
+            resolve(true)
+            /** chọn conversation đầu tiên */
+            this.handleSelectAndSetParam(conversations?.[DATA_KEY])
+          },
+        )
+      })
+
+      // nếu có dữ liệu hội thoại thì không chạy đoạn code tiếp theo nữa
+      if (IS_HAS_CONVERSATION) return
+    }
+
+    /** tính toán các cấu hình hội thoại đặc biệt */
+    const { SORT, OVERWRITE_FILTER } = this.calcConversationSpecialConfig()
+
+    /** dữ liệu hội thoại */
+    let res: QueryConversationResponse
+
+    try {
+      /** lấy dữ liệu hội thoại */
+      res = await this.API_CONVERSATION.readConversations(
+        PAGE_IDS,
+        orgStore.selected_org_id,
+        {
+          ...conversationStore.option_filter_page_data,
+          ...OVERWRITE_FILTER,
+        },
+        1,
+        SORT,
+      )
+    } catch (e) {
+      throw e
+    } finally {
+      /** tắt loading lần đầu */
+      conversationStore.is_loading_list = false
+    }
+
+    /**dữ liệu hội thoại */
+    let conversations = res.conversation
+
+    /** format dữ liệu trả về */
+    conversations = this.formatConversations(conversations)
+
+    // thêm vào mảng
+    conversationStore.conversation_list = {
+      ...conversationStore.conversation_list,
+      ...conversations,
+    }
+
+    /** lấy phần tử đầu tiên của hội thoại từ store */
+    const FIRST_CONVERSATION = map(conversations)?.[0]
+
+    /** chọn conversation đầu tiên */
+    this.handleSelectAndSetParam(FIRST_CONVERSATION)
+  }
+
+  /** hàm chọn hội thoại và đẩy id lên param */
+  handleSelectAndSetParam(conversation?: ConversationInfo) {
+
+    /** chọn hội thoại */
+    this.handleSelectConversation(conversation)
+
+    // nếu không có dữ liệu convesationt thì thôi
+    if (!conversation) return
+
+    /** đẩy id lên param */
+    setParamChat(
+      $router,
+      conversation.fb_page_id,
+      conversation.fb_client_id,
+    )
+  }
+
+  /** hàm sắp xếp conversation */
+  sortConversation() {
+    /** sắp xếp lại object theo last_message_time bằng lodash để tránh lỗi Object.entries */
+    const LIST_ARRAY = map(
+      conversationStore.conversation_list,
+      (value, key) => ({
+        key,
+        value,
+      }),
+    )
+
+    /** sắp xếp mảng */
+    const SORTED_ARRAY = orderBy(
+      LIST_ARRAY,
+      [item => item.value.last_message_time || 0],
+      ['desc'],
+    )
+
+    /** tạo object mới theo thứ tự đã sắp xếp */
+    const NEW_LIST: ConversationList = {}
+    SORTED_ARRAY.forEach(item => {
+      NEW_LIST[item.key] = item.value
+    })
+
+    /** cập nhật lại store */
+    conversationStore.conversation_list = NEW_LIST
+  }
 }
 const $main = new Main()
 
@@ -787,8 +975,28 @@ watch(
 /** khi có data page được chọn thì tính toán danh sách conversation */
 watch(
   () => pageStore.selected_page_list_info,
-  () => $main.loadConversationFirstTime(true, true),
+  async () => {
+    /** load lại danh sách hội thoại */
+    await $main.loadConversationFirstTime(false, true)
+
+    // sắp xếp lại danh sách hội thoại để 1 hội thoại đầu hiện ra trước ko bị sai vị trí
+    // chỉ chạy 1 lần khi mới vào màn hình chat thôi
+    $main.sortConversation()
+  },
 )
+
+/** khi lần đầu vào app lắng nghe dữ liệu người dùng hiện tại được set thì lấy 1 hội thoại để hiện nhanh ra trước */
+watch(
+  () => chatbotUserStore.chatbot_user,
+  async (new_value, old_value) => {
+    // chỉ chạy lần đầu khi lưu dữ liệu vào chatbot_user
+    if (!old_value) return
+    // call 1 dữ liệu hội thoại để hiện nhanh ra trước
+    $main.loadOneConversationBefore()
+  },
+  { immediate: true },
+)
+
 /** khi thay đổi hội thoại, nếu hội thoại trước đó còn tin nhắn chưa đọc thì reset */
 watch(
   () => conversationStore.select_conversation,

@@ -57,7 +57,7 @@
           type="text"
           class="rounded-lg w-full pl-8 pr-8 h-9 focus:outline-none text-sm"
           :placeholder="$t('v1.view.main.dashboard.select_page.select_org')"
-          v-model="search"
+          v-model.trim="search"
         />
         <img
           src="@/assets/icons/search.svg"

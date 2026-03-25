@@ -22,7 +22,7 @@
           :src="
             pageStore.map_orgs?.map_org_info?.[org_id]?.org_info?.org_avatar
           "
-          class="w-5 h-5 rounded-oval"
+          class="w-5 h-5 rounded-oval object-cover"
         />
         <BriefCaseIcon
           v-else

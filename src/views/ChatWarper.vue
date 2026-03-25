@@ -14,7 +14,7 @@
     <Menu />
     <Layout>
       <template #left>
-        <LeftBar :is_loading="is_init_loading" />
+        <LeftBar />
       </template>
       <template #center>
         <div class="flex gap-2 h-full">
@@ -22,8 +22,8 @@
         </div>
       </template>
       <template #right>
-        <RightBar :is_loading="should_show_skeleton" />
-        </template>
+        <RightBar :is_loading="is_init_loading || should_show_skeleton" />
+      </template>
     </Layout>
 
     <AlertWarning
@@ -37,13 +37,16 @@
   </div>
 </template>
 <script setup lang="ts">
+import { dispatchEventBus } from '@/event'
 import { read_os } from '@/service/api/chatbox/billing'
-import { update_info_conversation } from '@/service/api/chatbox/n4-service'
+import {
+  update_info_conversation
+} from '@/service/api/chatbox/n4-service'
 import { create_token_app_installed } from '@/service/api/chatbox/n5-app'
 import {
   getCurrentOrgInfo,
   getPageInfo,
-  getPageWidget,
+  getPageWidget
 } from '@/service/function'
 import {
   listen as ext_listen,
@@ -61,22 +64,27 @@ import {
 import { N4SerivceAppPage } from '@/utils/api/N4Service/Page'
 import { N5AppV1AppApp } from '@/utils/api/N5App'
 import { error } from '@/utils/decorator/Error'
-import { loading } from '@/utils/decorator/Loading'
 import { Toast } from '@/utils/helper/Alert/Toast'
 import { Delay } from '@/utils/helper/Delay'
-import { RealtimeSocket, Socket } from '@/utils/helper/Socket'
+import { RealtimeSocket } from '@/utils/helper/Socket'
 import { User } from '@/utils/helper/User'
 import { initRequireData, useDropFile } from '@/views/composable'
-import { debounce, difference, intersection, keys, map, size } from 'lodash'
-import { storeToRefs } from 'pinia'
+import {
+  difference,
+  intersection,
+  keys,
+  map,
+  size
+} from 'lodash'
 import { container } from 'tsyringe'
-import { onMounted, onUnmounted, ref, toRef, watch, computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { dispatchEventBus } from '@/event'
 
 import AlertAccountLimitReached from '@/components/AlertModal/AlertAccountLimitReached.vue'
 
+import BellSound from '@/assets/sound/notification-sound.mp3'
+import AlertWarning from '@/components/AlertModal/AlertWarning.vue'
 import HotAlert from '@/components/HotAlert.vue'
 import CenterContent from '@/views/ChatWarper/Chat/CenterContent.vue'
 import LeftBar from '@/views/ChatWarper/Chat/LeftBar.vue'
@@ -84,16 +92,15 @@ import RightBar from '@/views/ChatWarper/Chat/RightBar.vue'
 import Layout from '@/views/ChatWarper/Layout.vue'
 import Menu from '@/views/ChatWarper/Menu.vue'
 
-import BellSound from '@/assets/sound/notification-sound.mp3'
-
+import type { OwnerShipInfo } from '@/service/interface/app/billing'
 import type { SocketEvent } from '@/service/interface/app/common'
-import type { ConversationInfo } from '@/service/interface/app/conversation'
+import type {
+  ConversationInfo
+} from '@/service/interface/app/conversation'
 import type { MessageInfo } from '@/service/interface/app/message'
 import type { FacebookCommentPost } from '@/service/interface/app/post'
 import type { StaffSocket } from '@/service/interface/app/staff'
 import type { IAlert } from '@/utils/helper/Alert/type'
-import type { OwnerShipInfo } from '@/service/interface/app/billing'
-import AlertWarning from '@/components/AlertModal/AlertWarning.vue'
 
 /** store */
 const pageStore = usePageStore()
@@ -132,16 +139,27 @@ const is_init_loading = ref(true)
 /** Có nên hiển thị skeleton loading cho center va right bar ko */
 const should_show_skeleton = computed(() => {
   return (
-    is_init_loading.value ||
     conversationStore.is_loading_list ||
     (size(conversationStore.conversation_list) > 0 &&
       !conversationStore.select_conversation)
   )
 })
 
+// lắng nghe cả is_init_loading để biết khi thông tin page được call thành công => mới có list widget => token widget
 watch(
-  () => conversationStore.select_conversation,
-  (new_val, old_val) => getTokenOfWidget(new_val, old_val),
+  () => [conversationStore.select_conversation, is_init_loading.value],
+  (
+    [new_conversation, new_is_init_loading],
+    [old_conversation, old_is_init_loading],
+  ) => {
+    // nếu vẫn đang loading init dữ liệu thì thôi
+    if (new_is_init_loading) return
+    // nếu có rồi
+    getTokenOfWidget(
+      new_conversation as ConversationInfo,
+      old_conversation as ConversationInfo,
+    )
+  },
 )
 
 onMounted(() => {

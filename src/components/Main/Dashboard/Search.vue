@@ -5,7 +5,7 @@
       src="@/assets/icons/search.svg"
     />
     <input
-      v-model="model"
+      v-model.trim="model"
       :placeholder="placeholder"
       class="w-full rounded-full py-2 pl-10 pr-3 text-sm focus:outline-orange-500"
     />

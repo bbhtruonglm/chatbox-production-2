@@ -4,7 +4,7 @@
     v-if="is_open"
   >
     <div
-      class="absolute top-0 left-0 h-screen w-screen z-20"
+      class="absolute top-0 left-0 h-screen w-full z-20"
       :class="class_container"
     >
       <div

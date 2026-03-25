@@ -48,10 +48,11 @@ export function useWidget() {
         /**widget được toggle là hiển thị hay tắt */
         const WILL_SHOW = !item.is_show
 
-        // tạo lại token cho widget nếu widget bị tắt và widget này post message
-        if (!WILL_SHOW && item.snap_app?.is_post_message) {
-          item.url = getIframeUrl(item)
-        }
+        item.url = getIframeUrl(item)
+        
+        // if (!WILL_SHOW && item.snap_app?.is_post_message) {
+        //   item.url = getIframeUrl(item)
+        // }
 
         // gán giá trị hiển thị mới
         item.is_show = WILL_SHOW

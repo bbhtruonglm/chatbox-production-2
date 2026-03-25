@@ -183,6 +183,14 @@
         <SendStatus :is_error="message.error" />
       </div>
     </div>
+    <div
+      v-if="IS_EXT_UPLOADING && EXT_UPLOAD_CLIENT_ID === select_conversation?.fb_client_id"
+      class="absolute bottom-4 left-4 z-50 bg-white shadow flex items-center gap-1.5 px-2 py-1 text-[15px] text-slate-600 rounded-md border border-slate-200"
+      style="transform: scale(0.7); transform-origin: left bottom;"
+    >
+      <LoadingIcon class="!size-5 !text-blue-200 !fill-blue-700" />
+      {{ $t('v1.view.main.dashboard.chat.uploading_image') }} {{ EXT_UPLOAD_PROGRESS }}/{{ EXT_UPLOAD_TOTAL }}
+    </div>
   </div>
 </template>
 <script setup lang="ts">
@@ -199,7 +207,7 @@ import {
   useOrgStore,
 } from '@/stores'
 import { debounce, findLastIndex, remove, size, sortedIndexBy } from 'lodash'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import ClientAvatar from '@/components/Avatar/ClientAvatar.vue'
 import StaffAvatar from '@/components/Avatar/StaffAvatar.vue'
@@ -218,12 +226,14 @@ import UnReadAlert from '@/views/ChatWarper/Chat/CenterContent/MessageList/UnRea
 
 import ChatIcon from '@/components/Icons/Chat.vue'
 import DoubleCheckIcon from '@/components/Icons/DoubleCheck.vue'
+import LoadingIcon from '@/components/Icons/Loading.vue'
 
 import type { MessageInfo } from '@/service/interface/app/message'
 import type { CbError } from '@/service/interface/function'
 import type { DebouncedFunc } from 'lodash'
 import type { Handler } from 'mitt'
 import { is } from 'date-fns/locale'
+import type { ConversationInfo } from '@/service/interface/app/conversation'
 
 /**dữ liệu từ socket */
 interface CustomEvent extends Event {
@@ -254,6 +264,13 @@ const old_position_to_bottom = ref(0)
 const list_debounce_staff = ref<{
   [index: string]: DebouncedFunc<any>
 }>({})
+
+/** tiến trình upload của extension */
+const IS_EXT_UPLOADING = ref<boolean>(false)
+const EXT_UPLOAD_PROGRESS = ref<number>(0)
+const EXT_UPLOAD_TOTAL = ref<number>(0)
+/** fb_client_id của conversation đang upload, dùng để chỉ hiển thị loading ở đúng kênh chat */
+const EXT_UPLOAD_CLIENT_ID = ref<string>('')
 
 /** hội thoại đang chọn */
 const select_conversation = computed(() => {
@@ -297,9 +314,69 @@ const last_client_message_index = computed(() =>
   ),
 )
 
+// hủy lắng nghe sự kiện từ ext khi component bị hủy
+onUnmounted(() => {
+  window.removeEventListener('message', onExtensionMessage)
+})
+
+/** timeout hide upload progress */
+let ext_upload_timeout: ReturnType<typeof setTimeout> | null = null
+
+/** xử lý sự kiện báo upload từ extension */
+function onExtensionMessage($event: MessageEvent) {
+  /** lấy dữ liệu gửi từ extension qua window postMessage */
+  let data = $event.data
+  
+  // Parse stringified JSON if any
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data) } catch (e) {}
+  }
+
+  /** bóc tách dữ liệu từ nhiều cấu trúc phản hồi khác nhau của extension */
+  const PAYLOAD = data?.r || data?.data || data
+  
+  // Kiểm tra nới lỏng: có the extension gửi 'event' thay vì 'action',
+  // hoặc có khi chỉ trả về { progress, total, status }
+  const IS_UPLOAD = 
+    PAYLOAD?.action === 'UPLOAD_IMAGE' || data?.action === 'UPLOAD_IMAGE' ||
+    PAYLOAD?.event === 'UPLOAD_IMAGE' || data?.event === 'UPLOAD_IMAGE' ||
+    PAYLOAD?.event === 'RESPONSE_SEND_FILE' || data?.event === 'RESPONSE_SEND_FILE' ||
+    (data?.progress !== undefined && data?.total !== undefined) ||
+    (PAYLOAD?.progress !== undefined && PAYLOAD?.total !== undefined)
+
+  if (IS_UPLOAD) {
+    // Ưu tiên object chứa thuộc tính progress
+    const INFO = PAYLOAD?.progress !== undefined ? PAYLOAD : data
+    
+    // Nếu event không chưa INFO.progress thì bỏ qua (avoid false positives)
+    if (INFO.progress === undefined) return
+    
+    EXT_UPLOAD_PROGRESS.value = INFO.progress || 0
+    EXT_UPLOAD_TOTAL.value = INFO.total || 0
+    
+    // Chúng ta KHÔNG lấy client_id dựa trên `select_conversation` ở đây nữa,
+    // do bị delay từ ext và enduser có thể đang click sang hội thoại khác khiến sai scope.
+    // Việc lấy đúng client_id được xử lý qua event `chatbox_ext_upload_start` phát ra từ Input.vue lúc ấn gừi.
+    
+    // Luôn hiển thị UI khi nhận event
+    IS_EXT_UPLOADING.value = true
+
+    if (ext_upload_timeout) clearTimeout(ext_upload_timeout)
+
+    // Nếu DONE hoặc tiến độ đã đạt 100% thì hẹn giờ tắt
+    if (INFO.status === 'DONE' || (INFO.total > 0 && INFO.progress >= INFO.total)) {
+      ext_upload_timeout = setTimeout(() => {
+        IS_EXT_UPLOADING.value = false
+      }, 2000)
+    }
+  }
+}
+
 // lắng nghe sự kiện từ socket khi component được tạo ra
 onMounted(() => {
   resetMessage()
+  /** thực hiện lắng nghe các sự kiện message gửi đến window */
+  window.addEventListener('message', onExtensionMessage)
   // // * reset danh sách tin nhắn lúc mới vào nếu không mở bằng modal
   // messageStore.list_message = []
 
@@ -340,6 +417,11 @@ onMounted(() => {
 
 // lắng nghe sự kiện tin nhắn mới, tạm thời ép kiểu
 listenerEventBus('chatbox_socket_message', socketNewMessage as Handler<unknown>)
+
+// Bắt đúng client_id scope cục bộ khi nhấn Upload (bỏ qua delay Ext) 
+listenerEventBus('chatbox_ext_upload_start', ((id: string) => {
+  EXT_UPLOAD_CLIENT_ID.value = id
+}) as Handler<unknown>)
 
 // lắng nghe sự kiện cập nhật tin nhắn, tạm thời ép kiểu
 listenerEventBus(
@@ -415,7 +497,7 @@ function resetMessage() {
   // reset phân trang
   skip.value = 0
 
-  getListMessage(true)
+  getListMessage(true, select_conversation.value)
 }
 /**có khoá truy cập của trang này không */
 function isLockPage(): boolean {
@@ -628,7 +710,7 @@ function onScrollMessage($event: Event) {
 
 /** hàm debounce load dữ liệu tin nhắn */
 const debounceLoadMoreMessage = debounce(
-  $event => loadMoreMessage($event as UIEvent),
+  $event => loadMoreMessage($event as UIEvent, select_conversation.value),
   300,
 )
 
@@ -655,7 +737,7 @@ function handleButtonToBottom($event: UIEvent) {
   }
 }
 /**load thêm dữ liệu khi lăn chuột lên trên */
-function loadMoreMessage($event: UIEvent) {
+function loadMoreMessage($event: UIEvent, conversation?: ConversationInfo) {
   /**div chưa danh sách tin nhắn */
   const LIST_MESSAGE = $event?.target as HTMLElement
 
@@ -668,16 +750,16 @@ function loadMoreMessage($event: UIEvent) {
   if (is_loading.value || is_done.value) return
 
   /** infinitve loading scroll */
-  if (SCROLL_TOP < 500) getListMessage()
+  if (SCROLL_TOP < 500) getListMessage(false, conversation)
 }
 /**đọc danh sách tin nhắn */
-function getListMessage(is_scroll?: boolean) {
+function getListMessage(is_scroll?: boolean, conversation?: ConversationInfo) {
   /** nếu đang mất mạng thì không cho gọi api */
   if (!commonStore.is_connected_internet) return
 
   /** nếu chưa chọn khách hàng thì thôi */
-  if (!select_conversation.value?.fb_page_id) return
-  if (!select_conversation.value?.fb_client_id) return
+  if (!conversation?.fb_page_id) return
+  if (!conversation?.fb_client_id) return
 
   /**id tin nhắn trên đầu của lần loading trước */
   let old_first_message_id = messageStore.list_message?.[0]?._id
@@ -703,7 +785,7 @@ function getListMessage(is_scroll?: boolean) {
         cb()
       },
       /** đọc dữ liệu từ api */
-      (cb: CbError) => tryLoadUntilScrollable(cb),
+      (cb: CbError) => tryLoadUntilScrollable(cb, conversation),
       /** làm cho scroll to top mượt hơn */
       (cb: CbError) => {
         /** chạy infinitve loading scroll */
@@ -822,15 +904,18 @@ function visibleLastStaffReadAvatar(staff_id: string) {
 }
 
 /** hàm load dữ liệu cho đến khi danh sách có thể scroll */
-const tryLoadUntilScrollable = (cb: CbError) => {
+const tryLoadUntilScrollable = (cb: CbError, conversation: ConversationInfo) => {
   read_message(
     {
-      page_id: conversationStore.select_conversation?.fb_page_id,
-      client_id: conversationStore.select_conversation?.fb_client_id,
+      page_id: conversation?.fb_page_id,
+      client_id: conversation?.fb_client_id,
       skip: skip.value,
       limit: LIMIT,
     },
     (e, r) => {
+      // nếu không giống với hội thoại đang chọn thì thôi
+      if(conversation?.fb_client_id !== select_conversation.value?.fb_client_id) return
+
       /** nếu lỗi thì thôi */
       if (e) return cb(e)
 
@@ -874,7 +959,7 @@ const tryLoadUntilScrollable = (cb: CbError) => {
           !is_done.value
         ) {
           /** chưa scroll được, tiếp tục load thêm */
-          tryLoadUntilScrollable(cb)
+          tryLoadUntilScrollable(cb, conversation)
         } else {
           /** đã scroll được, hoặc đã hết dữ liệu */
           cb()

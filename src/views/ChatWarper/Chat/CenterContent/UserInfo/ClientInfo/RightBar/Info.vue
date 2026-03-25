@@ -66,8 +66,7 @@
       is_allow_remove
     />
     <InfoItem
-      v-for="(value, key) of conversationStore.select_conversation?.client_bio
-        ?.fb_info"
+      v-for="(value, key) of list_conversation?.client_bio?.fb_info"
       :title="getClientFieldName(key)"
       :value
     />
@@ -125,6 +124,7 @@ import ReloadContentIcon from '@/components/Icons/ReloadContent.vue'
 import { ChevronDownIcon } from '@heroicons/vue/24/outline'
 
 import { AiAppContact, AiAppOneContact, type ContactInfo } from '@/utils/api/Ai'
+import { N4ServiceConversation, type ConversationInfo } from '@/utils/api/N4Serivce'
 
 const conversationStore = useConversationStore()
 const extensionStore = useExtensionStore()
@@ -134,6 +134,8 @@ const { t: $t } = useI18n()
 
 /**danh sách liên lạc */
 const list_contact = ref<ContactInfo[]>([])
+/**thông tin user*/
+const list_conversation = ref<ConversationInfo | null>(null)
 /**ref của modal hướng dẫn cài đặt */
 const ref_guild_install_ext_modal = ref<InstanceType<typeof GuildInstallExt>>()
 
@@ -170,7 +172,12 @@ const gender_display = computed(() => {
 watch(() => conversationStore.is_edit_info, updateClientInfo)
 
 // lấy danh sách liên lạc của khách hàng khi component được mount
-onMounted(getContact)
+onMounted(async () => {
+  // lấy thông tin họ tên, giới tính, số điện thoại
+  await getContact()
+  // lấy thông tin Nơi ở hiện tại,Nơi làm việc, high_school, Tên hiển thị
+  await getConversation()
+})
 
 /**tự động bindding 2 chiều cho computed của hội thoại */
 function autoComputed(source: any, target: string) {
@@ -207,6 +214,23 @@ async function getContact() {
       page_id.value,
       client_id.value
     ).getContact()
+  } catch (e) {
+    // bắn lỗi ra thông báo
+    toastError(e)
+  }
+}
+
+/**đọc danh sách liên lạc của khách hàng */
+async function getConversation() {
+  try {
+    // nếu chưa có id của trang hoặc khách hàng thì bỏ qua
+    if (!page_id.value || !client_id.value) return
+
+    /**danh sách liên lạc */
+    list_conversation.value = await new N4ServiceConversation(
+      page_id.value,
+      client_id.value
+    ).getConversation()
   } catch (e) {
     // bắn lỗi ra thông báo
     toastError(e)

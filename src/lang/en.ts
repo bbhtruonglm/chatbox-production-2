@@ -914,6 +914,7 @@ const source: Language = {
             },
             you: 'You:',
             empty_message: 'Please select a conversation to start chatting',
+            uploading_image: 'Uploading image',
             empty_conversation: 'No conversation found!',
             empty_select_conversation: 'Select a customer to start!',
             assign_staff: {

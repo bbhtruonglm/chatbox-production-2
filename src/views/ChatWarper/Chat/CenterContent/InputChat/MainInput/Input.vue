@@ -59,6 +59,7 @@ import {
   useOrgStore,
 } from '@/stores'
 import { send_message } from '@/service/api/chatbox/n4-service'
+import { dispatchEventBus } from '@/event'
 import { map, get, size, uniqueId, partition, set, remove } from 'lodash'
 import { srcImageToFile } from '@/service/helper/file'
 import { scrollToBottomMessage } from '@/service/function'
@@ -332,6 +333,8 @@ class Main {
     const PAGE_ID = page_id.value
     /*id khách */
     const CLIENT_ID = client_id.value
+    /** id FB */
+    const FB_UID = conversationStore.select_conversation?.client_bio?.fb_uid
     /** Lưu selected client id */
     /**div input */
     const INPUT = input_chat_ref.value as HTMLDivElement
@@ -355,7 +358,7 @@ class Main {
         return this.sendReplyMessage(PAGE_ID, CLIENT_ID, TEXT)
       }
       /** gửi text */
-      this.sendText(PAGE_ID, CLIENT_ID, TEXT, INPUT)
+      this.sendText(PAGE_ID, CLIENT_ID, TEXT, INPUT, FB_UID)
     }
 
     /** gửi file */
@@ -366,6 +369,7 @@ class Main {
         CLIENT_ID,
         conversationStore.select_conversation,
         pageStore.selected_page_list_info,
+        FB_UID,
       )
     }
 
@@ -591,6 +595,7 @@ class Main {
     client_id: string,
     text: string,
     input: HTMLDivElement,
+    fb_uid?: string,
   ) {
     /** tính toán mentions */
     const MENTIONS = this.calcMentions(page_id, text)
@@ -670,7 +675,8 @@ class Main {
         page_id,
         client_id,
         pageStore?.selected_page_list_info?.[page_id]?.page?.fb_page_token,
-        conversationStore.select_conversation?.client_bio?.fb_uid,
+        // conversationStore.select_conversation?.client_bio?.fb_uid,
+        fb_uid,
         text,
       )
 
@@ -858,6 +864,7 @@ class Main {
     client_id: string,
     select_conversation?: ConversationInfo,
     selected_page_list_info?: PageList,
+    fb_uid?: string,
   ) {
     /** đánh dấu đang gửi file */
     messageStore.is_send_file = true
@@ -912,13 +919,17 @@ class Main {
             // Nếu không có ảnh nào hợp lệ => bỏ qua
             if (!ATTACHMENTS.length) return cb()
 
+            // Phát tín hiệu kèm đúng client_id được scope lúc bắt đầu gửi (tránh delay từ phía ext)
+            dispatchEventBus('chatbox_ext_upload_start', client_id)
+
             // Gửi ảnh qua extension
             sendImageMessage(
               select_conversation?.platform_type,
               page_id,
               client_id,
               selected_page_list_info?.[page_id]?.page?.fb_page_token,
-              select_conversation?.client_bio?.fb_uid,
+              // select_conversation?.client_bio?.fb_uid,
+              fb_uid,
               IMAGE_LIST.map(image => ({
                 url: image.url as string,
                 fb_image_id: image.fb_image_id,

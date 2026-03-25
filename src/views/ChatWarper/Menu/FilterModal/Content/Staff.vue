@@ -7,7 +7,7 @@
       :placeholder="$t('v1.view.main.dashboard.chat.filter.staff.find_staff')"
       class="border px-3 py-1 w-full rounded-lg focus:outline-none text-sm"
       v-on:keyup="searchStaff"
-      v-model="search_staff_name"
+      v-model.trim="search_staff_name"
     />
   </div>
   <div class="h-[calc(100%_-_88px)] overflow-y-auto">

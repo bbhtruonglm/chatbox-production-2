@@ -29,7 +29,7 @@ import {
   useChatbotUserStore,
 } from '@/stores'
 import { set_assign_staff_conversation } from '@/service/api/chatbox/n4-service'
-import { nonAccentVn } from '@/service/helper/format'
+import { nonAccentVnSearch } from '@/service/helper/format'
 import { flow } from '@/service/helper/async'
 
 import Dropdown from '@/components/Dropdown.vue'
@@ -235,18 +235,19 @@ function assignConversationtoStaff(staff: StaffInfo | null) {
  * Lọc hội thoại theo nhân viên
  * @param search nội dung tìm kiếm
  */
+
 function searchStaff(search: string) {
-  /** Nếu không có tên nhân viên thì hiển thị tất cả nhân viên */
-  if (!search) return (staffs.value = map(snap_staffs.value))
+  const SEARCH = nonAccentVnSearch(search || "")
 
-  /** Lọc nhân viên theo tên */
-  staffs.value = staffs.value?.filter(staff => {
-    /**nội dung tìm kiếm */
-    const SEARCH: string = nonAccentVn(search)
-    /**tên nhân viên */
-    const NAME: string = nonAccentVn(staff?.name)
-
-    /** Nếu tên nhân viên chứa nội dung tìm kiếm thì hiển thị */
+  /** nếu không search thì trả toàn bộ */
+  if (!SEARCH) {
+    staffs.value = map(snap_staffs.value)
+    return
+  }
+  
+ /** Lọc nhân viên theo tên */
+  staffs.value = map(snap_staffs.value)?.filter(staff => {
+    const NAME = nonAccentVnSearch(staff?.name || "")
     return NAME.includes(SEARCH)
   })
 }

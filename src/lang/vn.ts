@@ -66,6 +66,8 @@ const source: Language = {
   'Trả lời sau _': 'Trả lời sau {duration}',
   Lọc: 'Lọc',
   Nhãn: 'Nhãn',
+  'nhãn': 'nhãn',
+  'Nhãn chung': 'Nhãn chung',
   'Trừ nhãn': 'Trừ nhãn',
   'Thời gian': 'Thời gian',
   'Nhân viên': 'Nhân viên',
@@ -710,6 +712,7 @@ const source: Language = {
             },
             you: 'Bạn:',
             empty_message: 'Hãy chọn 1 hội thoại để bắt đầu trò chuyện',
+            uploading_image: 'Đang tải ảnh lên',
             empty_conversation: 'Không tìm thấy hội thoại!',
             empty_select_conversation: 'Chọn một khách hàng để bắt đầu!',
             assign_staff: {

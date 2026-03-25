@@ -35,6 +35,29 @@ export const nonAccentVn = (input: string) => {
   return input
 }
 
+/**
+ * Chuẩn hóa chuỗi để tìm kiếm không dấu:
+ * - đổi về chữ thường
+ * - tách dấu khỏi ký tự
+ * - xóa các dấu tiếng Việt
+ * - chuẩn hóa khoảng trắng
+ */
+export const nonAccentVnSearch = (input: string) => {
+  return input
+    /** Đưa toàn bộ về chữ thường để search ổn định */
+    .toLowerCase()
+    /** Tách ký tự và dấu thành các phần riêng biệt */
+    .normalize("NFD")
+    /** Xóa toàn bộ dấu sau khi đã tách */
+    .replace(/[\u0300-\u036f]/g, "")
+    /** Quy đổi chữ đ về d để tìm kiếm đồng nhất */
+    .replace(/đ/g, "d")
+    /** Gộp nhiều khoảng trắng liên tiếp thành 1 khoảng trắng */
+    .replace(/\s+/g, " ")
+    /** Xóa khoảng trắng thừa ở đầu và cuối chuỗi */
+    .trim()
+}
+
 /**tạo mới obj để ngắt sự liên kết trong ô nhớ */
 export const copy = (object: Object) => JSON.parse(JSON.stringify(object))
 
