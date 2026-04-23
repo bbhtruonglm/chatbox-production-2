@@ -4,7 +4,8 @@
     class="flex-col gap-3 hidden md:flex"
   >
     <div
-      v-for="noti of list_noti"
+      v-for="noti of list_noti.slice(0, 2)"
+      :key="noti.noti_id"
       :class="
         getConfig(noti.noti_code).bg + ' ' + getConfig(noti.noti_code).border
       "
@@ -33,6 +34,13 @@
           {{ $t('v1.common.close') }}
         </button>
       </div>
+    </div>
+    
+    <div
+      v-if="list_noti.length > 2"
+      class="text-center text-slate-500 font-bold text-[10px]"
+    >
+      +{{ list_noti.length - 2 }} {{ $t('thông báo khác') }}
     </div>
   </div>
 </template>
@@ -276,6 +284,9 @@ async function readNoti(noti?: NotiInfo, is_close?: boolean) {
 
     /** giảm số thông báo */
     if (orgStore.count_noti) orgStore.count_noti--
+
+    /** xóa thông báo khỏi danh sách local để hiển thị các thông báo sau lên lập tức */
+    list_noti.value = list_noti.value.filter(n => n.noti_id !== noti?.noti_id)
 
     /** chỉ đóng không xử lý gì thêm */
     if (is_close) getNoti()

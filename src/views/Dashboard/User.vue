@@ -1,6 +1,6 @@
 <template>
     <div class="w-full h-full flex items-center flex-col pt-[65px]">
-        <StaffAvatar class="rounded-full w-36 h-36" :id="chatbotUserStore.chatbot_user?.fb_staff_id"  />
+        <StaffAvatar class="rounded-full w-36 h-36" :id="chatbotUserStore.getStaffId()"  />
         <div class="mt-2 font-bold text-2xl text-slate-500">
             {{ chatbotUserStore.chatbot_user?.full_name }}
         </div>

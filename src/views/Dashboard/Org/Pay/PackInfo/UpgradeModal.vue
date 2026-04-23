@@ -14,14 +14,22 @@
       >
         <div
           @click="toggleModal"
-          class="w-full h-full p-3 flex flex-grow min-h-0 overflow-y-auto justify-center items-center"
+          class="w-full h-full p-0 md:p-3 flex flex-grow min-h-0 overflow-y-auto justify-center items-center"
         >
           <div
             @click.stop
-            class="py-3 px-6 rounded-lg bg-slate-50 max-w-full flex flex-col shadow-lg gap-10 max-h-full overflow-y-auto"
+            class="relative py-3 px-2 md:px-6 rounded-lg bg-slate-50 max-w-full flex flex-col shadow-lg gap-4 md:gap-8 max-h-full overflow-y-auto"
           >
-            <div>
-              <div class="px-3 text-lg font-semibold flex-shrink-0 text-center">
+            <button
+              @click="toggleModal"
+              class="absolute top-3 right-3 p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition-colors z-10 sm:hidden"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div class="max-sm:mt-2">
+              <div class="px-3 text-lg font-semibold flex-shrink-0 text-center max-sm:mb-1">
                 {{ $t('v1.view.main.dashboard.org.pay.upgrade.title') }}
               </div>
               <div
@@ -39,8 +47,8 @@
                 />
               </div>
             </div>
-            <div class="grid grid-cols-4 gap-3">
-              <div class="item max-w-80">
+            <div class="grid grid-cols-4 gap-3 max-sm:flex max-sm:overflow-x-auto max-sm:pb-4 max-sm:snap-x max-sm:snap-mandatory">
+              <div class="item max-w-80 max-sm:shrink-0 max-sm:w-[280px] max-sm:snap-start">
                 <Content :content="CONTENTS.FREE" />
                 <button
                   v-if="orgStore.isFreePack() || orgStore.isTrialPack()"
@@ -50,7 +58,7 @@
                   {{ $t('v1.view.main.dashboard.org.pay.upgrade.current') }}
                 </button>
               </div>
-              <div class="item max-w-80">
+              <div class="item max-w-80 max-sm:shrink-0 max-sm:w-[280px] max-sm:snap-start">
                 <Content
                   :content="CONTENTS.LITE"
                   :is_full_year
@@ -117,7 +125,7 @@
                   </template>
                 </button>
               </div>
-              <div class="item max-w-80">
+              <div class="item max-w-80 max-sm:shrink-0 max-sm:w-[280px] max-sm:snap-start">
                 <Content
                   :content="CONTENTS.PRO"
                   :is_full_year
@@ -198,7 +206,7 @@
                   </template>
                 </button>
               </div>
-              <div class="item max-w-80">
+              <div class="item max-w-80 max-sm:shrink-0 max-sm:w-[280px] max-sm:snap-start">
                 <Content
                   :content="CONTENTS.COMPANY"
                   :is_full_year

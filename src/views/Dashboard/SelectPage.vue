@@ -23,16 +23,17 @@
           <div class="flex-shrink-0">
             {{ $t('Trình quản lý Trang') }}
           </div>
-          <AssignGroup
+          <!-- Ẩn đi vì hiện tại hiện lên không để làm gì nhưng vỡ UI -->
+          <!-- <AssignGroup
             v-if="!orgStore.isAdminOrg() && !orgStore.is_selected_all_org"
-          />
+          /> -->
         </div>
         <div
           class="grid grid-cols-2 gap-5 md:flex md:justify-between flex-shrink-0"
         >
           <Search
             class="md:w-52"
-            v-model="selectPageStore.search"
+            v-model="searchKeyword"
             :placeholder="$t('v1.common.page_search_placeholder')"
           />
           <SelectOrg is_allow_all />
@@ -134,10 +135,10 @@ import { TriggerEventRef } from '@/utils/helper/TriggerEventRef'
 import { useEmbedChat } from '@/views/composables/useEmbedChat'
 import { usePageManager } from '@/views/Dashboard/composables/usePageManager'
 import { KEY_GET_CHATBOT_USER_FUNCT } from '@/views/Dashboard/symbol'
-import { size } from 'lodash'
+import { debounce, size } from 'lodash'
 import { storeToRefs } from 'pinia'
 import { container } from 'tsyringe'
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import VipExpireToast from './VipExpireToast.vue'
@@ -171,6 +172,12 @@ const chatbotUserStore = useChatbotUserStore()
 const $route = useRoute()
 const orgStore = useOrgStore()
 const { ref_alert_reach_limit } = storeToRefs(useCommonStore())
+/** Giữ giá trị gõ realtime trên input, chưa đẩy ngay vào store */
+const searchKeyword = ref(selectPageStore.search)
+/** Chỉ cập nhật keyword tìm kiếm sau 300ms để tránh filter liên tục */
+const updateSearch = debounce((value: string) => {
+  selectPageStore.search = value
+}, 300)
 
 const $trigger_event_ref = container.resolve(TriggerEventRef)
 const $session_storage = container.resolve(SessionStorageManager)
@@ -201,6 +208,23 @@ onMounted(async () => {
   await getALlOrgAndPage()
 
   handleLoginWithoutPage()
+})
+/** Khi searchKeyword thay đổi thì cập nhật search */
+watch(searchKeyword, value => {
+  updateSearch(value)
+})
+
+/** Đồng bộ lại input nếu keyword trong store bị đổi từ nơi khác */
+watch(
+  () => selectPageStore.search,
+  value => {
+    if (value !== searchKeyword.value) searchKeyword.value = value
+  }
+)
+
+/** Hủy debounce pending khi component bị hủy */
+onBeforeUnmount(() => {
+  updateSearch.cancel()
 })
 
 /**kích hoạt tự động mở kết nối nền tảng nếu cần */

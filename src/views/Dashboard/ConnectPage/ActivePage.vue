@@ -366,16 +366,25 @@ async function getMapMyOs() {
   let list_my_os: OwnerShipInfo[] = []
 
   // lấy toàn bộ các trang thuộc tổ chức của tôi
-  await eachOfLimit(orgStore.list_org, 1, async (org: OrgInfo, i) => {
-    // nếu không có id tổ chức thì bỏ qua
-    if (!org.org_id) return
+  // await eachOfLimit(orgStore.list_org, 1, async (org: OrgInfo, i) => {
+  //   // nếu không có id tổ chức thì bỏ qua
+  //   if (!org.org_id) return
 
-    /**các trang đã nằm trong tổ chức */
-    const LIST_OS = await read_os(org.org_id)
+  //   /**các trang đã nằm trong tổ chức */
+  //   const LIST_OS = await read_os(org.org_id)
 
-    // thêm trang vào danh sách tổng
-    list_my_os = [...list_my_os, ...LIST_OS]
-  })
+  //   // thêm trang vào danh sách tổng
+  //   list_my_os = [...list_my_os, ...LIST_OS]
+  // })
+
+  // nếu không có id tổ chức thì bỏ qua
+  if (!orgStore.selected_org_id) return
+
+  // call api read-page với id mặc định của page
+  const LIST_OS = await read_os(orgStore.selected_org_id)
+
+  // thêm trang vào danh sách tổng
+  list_my_os = [...list_my_os, ...LIST_OS]
 
   /**page_id và org_id */
   map_my_os.value = mapValues(keyBy(list_my_os, 'page_id'), 'org_id')

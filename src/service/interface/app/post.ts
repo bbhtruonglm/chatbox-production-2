@@ -26,6 +26,8 @@ export interface FacebookCommentPost {
   // * Flag
   new_comment?: string
   sending_message?: boolean
+  /**đánh dấu comment đã bị xoá để UI hiển thị mờ và chặn thao tác xoá lại */
+  is_delete_comment?: boolean
 
   // * Time
   createdAt?: string

@@ -1,9 +1,9 @@
 <template>
   <div
-    class="rounded-lg p-3 bg-slate-100 border border-slate-300 grid grid-cols-2 overflow-hidden text-sm gap-2.5"
+    class="rounded-lg p-3 bg-slate-100 border border-slate-300 max-sm:flex max-sm:flex-col sm:grid sm:grid-cols-2 max-sm:max-w-full max-sm:!min-w-0 max-sm:!w-full overflow-hidden text-sm gap-2.5"
     :class="[is_modal ? 'min-w-[674px] w-full' : 'w-[720px]']"
   >
-    <div class="bg-slate-100 flex flex-col gap-2.5">
+    <div class="bg-slate-100 flex flex-col gap-2.5 max-sm:order-2 max-sm:w-full">
       <div>
         <div class="text-slate-700">
           {{
@@ -12,7 +12,7 @@
         </div>
         <div class="flex gap-3 items-center">
           <div
-            class="border border-green-800 bg-green-50 py-2 px-3 rounded-lg font-semibold w-fit"
+            class="border border-green-800 bg-green-50 py-2 px-3 rounded-lg font-semibold w-fit max-sm:max-w-[180px]"
           >
             {{ payment_info?.account }}
           </div>
@@ -33,7 +33,7 @@
         </div>
         <div class="flex gap-3 items-center">
           <div
-            class="border border-green-800 bg-green-50 py-2 px-3 rounded-lg font-semibold w-fit"
+            class="border border-green-800 bg-green-50 py-2 px-3 rounded-lg font-semibold w-fit max-sm:max-w-[180px]"
           >
             {{ payment_info?.name }}
           </div>
@@ -53,7 +53,7 @@
         </div>
         <div class="flex gap-3 items-center">
           <div
-            class="border border-green-800 bg-green-50 py-2 px-3 rounded-lg font-semibold w-fit"
+            class="border border-green-800 bg-green-50 py-2 px-3 rounded-lg font-semibold w-fit max-sm:max-w-[180px]"
           >
             {{ txn_id }}
           </div>
@@ -77,7 +77,7 @@
       </div>
     </div>
     <div
-      class="p-5 bg-white border border-slate-300 flex flex-col gap-2.5 items-center rounded-lg"
+      class="p-5 bg-white border border-slate-300 flex flex-col gap-2.5 items-center rounded-lg max-sm:order-1 max-sm:w-full"
     >
       <div>
         {{ $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.qr') }}
@@ -117,7 +117,7 @@
   >
     {{ $t('v1.view.main.dashboard.org.pay.recharge.success') }}
   </div>
-  <div class="text-sm py-3 px-5 rounded-lg bg-yellow-50 w-[572px]">
+  <div class="text-sm py-3 px-5 rounded-lg bg-yellow-50 w-[572px] max-sm:w-full">
     <div class="font-semibold">
       {{ $t('v1.view.main.dashboard.org.pay.recharge.transfer_info.hint') }}:
     </div>
@@ -153,14 +153,11 @@ import { BBH_PAGE_MESS } from '@/configs/constants/botbanhang'
 import { copyToClipboard } from '@/service/helper/copyWithAlert'
 import { BillingAppTxn } from '@/utils/api/Billing'
 import BankQrCode from '@/views/Dashboard/Org/Pay/ReCharge/BankQrCode.vue'
-import type {
-  PaymentInfo,
-  TransactionInfo,
-} from '@/service/interface/app/billing'
-import { size } from 'lodash'
+import type { TransactionInfo } from '@/service/interface/app/billing'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useCommonStore } from '@/stores'
 import type { IBankAccount } from '@/utils/api/N4Service/Partner'
+import { useTransferPaymentInfo } from '@/views/composables/useTransferPaymentInfo'
 
 const $props = withDefaults(
   defineProps<{
@@ -185,28 +182,13 @@ const $props = withDefaults(
 )
 /** Khai báo common store */
 const commonStore = useCommonStore()
+const { calcPaymentInfo } = useTransferPaymentInfo()
 /** Khai báo transaction */
 const txn_info = defineModel<TransactionInfo>()
 /** Trạng thái check payment */
 const check_payment = defineModel<Boolean>('check_payment')
 
-/**Thông tin chuyển khoản của cty */
-const BBH: IBankAccount = {
-  bank_bin: 970407,
-  account: '19036252323010',
-  name: 'CTCP Công nghệ Chatbot Việt Nam',
-  bank: 'Techcombank - Ngân hàng Kỹ thương Việt Nam - Chi nhánh Hà Thành',
-  code: 'BBH_TCB',
-}
-const A_TUNG_TIMO: IBankAccount = {
-  bank_bin: 963388,
-  account: '9021103769279',
-  name: 'Nguyễn Đình Tùng',
-  bank: 'Ngân hàng số Timo by Ban Viet Bank (Timo by Ban Viet Bank)',
-  code: 'TUNG_TIMO',
-}
-
-/**Thông tin chuyển khoản */
+/** Thông tin chuyển khoản */
 const payment_info = ref<IBankAccount>()
 /**id của time out check giao dịch */
 const check_txn_timeout_id = ref<number>()
@@ -263,7 +245,6 @@ function checkTxnSuccess() {
         'v2'
       )
 
-      console.log(TXN, 'txn')
       // nếu không có giao dịch thì check lại sau
       if (!TXN) return
       // cập nhật thông tin giao dịch
@@ -274,26 +255,5 @@ function checkTxnSuccess() {
       clearInterval(check_txn_timeout_id.value)
     }
   }, TIMER)
-}
-/**Tính toán thông tin chuyển khoản */
-function calcPaymentInfo(): IBankAccount {
-  /**xuất hóa đơn */
-  const INVOICE: IBankAccount =
-    commonStore.partner?.bank_account?.invoice || BBH
-  /**không xuất hóa đơn */
-  const NON_INVOICE: IBankAccount =
-    commonStore.partner?.bank_account?.non_invoice || A_TUNG_TIMO
-
-  /** nếu không có mã, hoặc mã không bật chế độ đối tác, thì chuyển về cty */
-  if (!$props?.is_pay_partner) return INVOICE
-
-  /** nếu xuất hoá đơn thì vẫn chuyển về cty */
-  if ($props?.is_issue_invoice) return INVOICE
-
-  /** nếu không có thông tin đối tác thì chuyển về a Tùng */
-  if (!size($props?.partner_info)) return NON_INVOICE
-
-  /** nếu có thông tin đối tác thì chuyển về đối tác */
-  return $props.partner_info || NON_INVOICE
 }
 </script>

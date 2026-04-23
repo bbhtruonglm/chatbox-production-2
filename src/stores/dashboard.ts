@@ -1,9 +1,9 @@
 import { getLocal, saveLocal } from '@/service/helper/store'
-import { format as date_format, differenceInDays } from 'date-fns'
+import { format as date_format, differenceInDays, addDays, endOfDay } from 'date-fns'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { UNLIMITED_VALUE } from '@/configs/constants/billing'
+import { UNLIMITED_VALUE, RESET_CYCLE_DAYS } from '@/configs/constants/billing'
 import type {
   MemberShipInfo,
   OrgInfo,
@@ -165,16 +165,37 @@ export const useOrgStore = defineStore('org_store', () => {
       selected_org_info.value?.org_package?.org_quota_staff === UNLIMITED_VALUE
     )
   }
-  /**có phải là gói không giới hạn nhân viên không */
+  /**lấy ngày reset gói gần nhất */
+  function getLastResetDate(): Date | null {
+    const RAW = selected_org_info.value?.org_package?.org_last_reset_date
+
+    // nếu chưa có lịch sử reset thì trả về null
+    return RAW ? new Date(RAW) : null
+  }
+
+  /**thời gian làm mới gói gần nhất */
   function lastReset() {
-    /**thời gian hết hạn */
-    const END_DATE = selected_org_info.value?.org_package?.org_last_reset_date
+    const LAST_DATE = getLastResetDate()
 
-    /** nếu không có thời gian hết hạn thì trả về rỗng */
-    if (!END_DATE) return ''
+    // nếu chưa có lịch sử reset thì trả về rỗng
+    if (!LAST_DATE) return ''
 
-    /** trả về thời gian thanh toán tiếp theo */
-    return date_format(new Date(END_DATE), 'hh:mm dd/MM/yyyy')
+    // trả về ngày reset gần nhất
+    return date_format(LAST_DATE, 'dd/MM/yyyy')
+  }
+
+  /**thời gian làm mới gói tiếp theo */
+  function nextReset() {
+    const LAST_DATE = getLastResetDate()
+
+    // nếu chưa có lịch sử reset thì trả về rỗng
+    if (!LAST_DATE) return ''
+
+    /**mốc cuối ngày của ngày reset tiếp theo */
+    const NEXT_DATE = endOfDay(addDays(LAST_DATE, RESET_CYCLE_DAYS))
+
+    // trả về thời gian reset tiếp theo
+    return date_format(NEXT_DATE, 'HH:mm dd/MM/yyyy')
   }
   /**có phải là gói miễn phí không */
   function isFreePack() {
@@ -294,6 +315,7 @@ export const useOrgStore = defineStore('org_store', () => {
     isUnlimitedStaff,
     isOverLimit,
     lastReset,
+    nextReset
   }
 })
 

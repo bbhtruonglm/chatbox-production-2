@@ -18,9 +18,9 @@
     <template #item>
       <div class="py-3">
         <div
-          class="py-1 px-5 flex flex-col gap-3 rounded-lg border border-gray-200"
+          class="py-1 px-0 md:px-5 flex flex-col gap-3 rounded-lg border border-gray-200"
         >
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-2 gap-3 max-sm:block">
             <div>
               <div class="p-4 font-medium">
                 {{ $t('v1.view.main.dashboard.org.pay.recharge.amount') }}
@@ -172,7 +172,7 @@
               {{ $t('v1.view.main.dashboard.org.pay.recharge.invoice') }}
             </div>
             <div class="p-4 pt-0 flex flex-col gap-5">
-              <div class="flex gap-5">
+              <div class="flex gap-5 flex-col md:flex-row">
                 <Radio
                   v-model="is_issue_invoice"
                   :value="false"

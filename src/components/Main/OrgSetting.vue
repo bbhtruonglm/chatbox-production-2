@@ -1,5 +1,4 @@
-<template>
-  <template v-if="orgStore.isAdminOrg()">
+  <template>
     <MenuTitle :title="$t('v1.view.main.dashboard.header.business')" />
     <MenuItem
       @click="redirectMenu('org')"
@@ -23,17 +22,8 @@
       :title="$t('v1.view.main.dashboard.nav.widget')"
     />
   </template>
-  <template v-if="!orgStore.isAdminOrg()">
-    <MenuItem
-      @click="redirectMenu('widget')"
-      :icon="SquareIcon"
-      :title="$t('v1.view.main.dashboard.nav.widget')"
-    />
-  </template>
-</template>
 
 <script setup lang="ts">
-import { useOrgStore } from '@/stores'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -46,7 +36,6 @@ import MenuTitle from '@/components/Main/Dashboard/MenuTitle.vue'
 
 const { t: $t } = useI18n()
 const $router = useRouter()
-const orgStore = useOrgStore()
 
 /** hiển thị thanh toán */
 const IS_SHOW_PAYMENT = $env.is_show_payment

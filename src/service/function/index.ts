@@ -633,6 +633,6 @@ export function clickCopyPhoneEmail($event: MouseEvent) {
 
   /**giá trị cấn copy */
   const VALUE = TARGET.innerText
-
+  // copy to clipboard
   copyToClipboard(VALUE)
 }

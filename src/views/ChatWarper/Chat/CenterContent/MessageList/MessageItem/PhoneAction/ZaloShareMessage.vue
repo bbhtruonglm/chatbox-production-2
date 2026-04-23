@@ -493,7 +493,6 @@ const sending_message = ref<string>('')
 watch(
   () => message_data.value,
   newVal => {
-    console.log('newVal', newVal)
     sending_message.value = newVal?.message_text || ''
     sending_media.value = newVal?.message_attachments || []
   }

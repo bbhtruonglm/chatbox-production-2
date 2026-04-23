@@ -87,7 +87,7 @@
                 </td>
                 <td
                   v-if="txn.txn_type === 'DEPOSIT'"
-                  @click="$main.detailTxn(txn.txn_id)"
+                  @click="$main.detailTxn(txn.txn_id, txn.txn_status)"
                   class="pl-2.5 text-right text-blue-700 cursor-pointer font-medium"
                 >
                   {{ $t('v1.view.main.dashboard.org.pay.view') }}
@@ -129,12 +129,12 @@ const list_txn = ref<TransactionInfo[]>()
 
 class Main {
   /**chuyển đến trang chi tiết giao dịch */
-  detailTxn(txn_id?: string) {
+  detailTxn(txn_id?: string, txn_status?: string) {
     // nếu không có txn_id thì không chuyển
     if (!txn_id) return
 
-    // chuyển đến trang chi tiết giao dịch + query txn_id
-    $router.push({ path: '/dashboard/org/pay/recharge', query: { txn_id } })
+    // chuyển đến trang chi tiết giao dịch + query txn_id, txn_status
+    $router.push({ path: '/dashboard/org/pay/recharge', query: { txn_id, txn_status } })
   }
   /**đọc danh sách giao dịch */
   @loading(toRef(orgStore, 'is_loading'), false)

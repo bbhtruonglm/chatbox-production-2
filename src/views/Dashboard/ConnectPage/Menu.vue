@@ -47,6 +47,13 @@ const list_platform = ref<PlatformItem[]>(getPlatform())
 
 /** Kiểm tra xem menu có được chọn không */
 function isSelectedMenu(key: string) {
+  /**
+   * Zalo là case đặc biệt:
+   * - Menu bên trái chỉ có 1 item "ZALO"
+   * - Nhưng bên trong flow reconnect/current_menu có thể là "ZALO_OA" hoặc "ZALO_PERSONAL"
+   * Vì vậy cần coi cả hai trạng thái con này đều đang active menu Zalo.
+   */
+  if (key === 'ZALO') return connectPageStore.current_menu?.includes('ZALO')
   return key === connectPageStore.current_menu
 }
 /**khởi tạo danh sách menu */

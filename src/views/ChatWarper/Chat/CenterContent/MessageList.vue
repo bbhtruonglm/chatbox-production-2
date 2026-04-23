@@ -176,7 +176,7 @@
             }"
           />
           <StaffAvatar
-            :id="chatbotUserStore.chatbot_user?.user_id"
+            :id="chatbotUserStore.getStaffId()"
             class="w-8 h-8 rounded-oval flex-shrink-0"
           />
         </div>
@@ -190,6 +190,14 @@
     >
       <LoadingIcon class="!size-5 !text-blue-200 !fill-blue-700" />
       {{ $t('v1.view.main.dashboard.chat.uploading_image') }} {{ EXT_UPLOAD_PROGRESS }}/{{ EXT_UPLOAD_TOTAL }}
+    </div>
+    <div
+      v-if="IS_EXT_UPLOADING === false && EXT_UPLOAD_CLIENT_ID === select_conversation?.fb_client_id"
+      class="absolute bottom-4 left-4 z-50 bg-white shadow flex items-center gap-1.5 px-2 py-1 text-[15px] text-slate-600 rounded-md border border-slate-200"
+      style="transform: scale(0.7); transform-origin: left bottom;"
+    >
+      <LoadingIcon class="!size-5 !text-blue-200 !fill-blue-700" />
+      {{ $t('v1.view.main.dashboard.chat.preparing_upload') }}
     </div>
   </div>
 </template>
@@ -266,7 +274,7 @@ const list_debounce_staff = ref<{
 }>({})
 
 /** tiến trình upload của extension */
-const IS_EXT_UPLOADING = ref<boolean>(false)
+const IS_EXT_UPLOADING = ref<boolean | null>(null)
 const EXT_UPLOAD_PROGRESS = ref<number>(0)
 const EXT_UPLOAD_TOTAL = ref<number>(0)
 /** fb_client_id của conversation đang upload, dùng để chỉ hiển thị loading ở đúng kênh chat */
@@ -350,8 +358,9 @@ function onExtensionMessage($event: MessageEvent) {
     
     // Nếu event không chưa INFO.progress thì bỏ qua (avoid false positives)
     if (INFO.progress === undefined) return
-    
+      // gán giá trị progress và total
     EXT_UPLOAD_PROGRESS.value = INFO.progress || 0
+    // gán giá trị total
     EXT_UPLOAD_TOTAL.value = INFO.total || 0
     
     // Chúng ta KHÔNG lấy client_id dựa trên `select_conversation` ở đây nữa,
@@ -366,7 +375,8 @@ function onExtensionMessage($event: MessageEvent) {
     // Nếu DONE hoặc tiến độ đã đạt 100% thì hẹn giờ tắt
     if (INFO.status === 'DONE' || (INFO.total > 0 && INFO.progress >= INFO.total)) {
       ext_upload_timeout = setTimeout(() => {
-        IS_EXT_UPLOADING.value = false
+        // Sau khi upload xong thì chuyển về null, tránh pre-loading vẫn hoạt động
+        IS_EXT_UPLOADING.value = null
       }, 2000)
     }
   }
@@ -420,7 +430,10 @@ listenerEventBus('chatbox_socket_message', socketNewMessage as Handler<unknown>)
 
 // Bắt đúng client_id scope cục bộ khi nhấn Upload (bỏ qua delay Ext) 
 listenerEventBus('chatbox_ext_upload_start', ((id: string) => {
+  // Lưu Id client 
   EXT_UPLOAD_CLIENT_ID.value = id
+  // Lưu trạng thái pre-loading (tránh việc không có UI khiến khách tưởng bị lag)
+  IS_EXT_UPLOADING.value = false
 }) as Handler<unknown>)
 
 // lắng nghe sự kiện cập nhật tin nhắn, tạm thời ép kiểu
@@ -589,6 +602,12 @@ function socketNewMessage({ detail }: CustomEvent) {
 
     // thêm tin nhắn vào map
     messageStore.map_list_message_by_id.set(detail.message_mid, detail)
+  }
+
+  // nếu là tin nhắn hệ thống và page_id trùng với page_id của hội thoại đang chọn thì thêm vào danh sách
+  if (detail.message_type === 'system' && detail.fb_page_id === select_conversation.value?.fb_page_id) {
+      // thêm tin nhắn vào danh sách
+    insertMessageSorted(messageStore.list_message, detail)
   }
 
   // xử lý khi gặp trường hợp phát hiện tin nhắn chờ

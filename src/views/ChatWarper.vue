@@ -34,6 +34,12 @@
       ref="ref_alert_reach_quota"
     />
     <AlertAccountLimitReached ref="ref_alert_reach_limit" />
+    <DisconnectedPageWarning
+      ref="disconnect_warning_modal_ref"
+      @continue="closeDisconnectWarning()"
+      @reconnect="openDisconnectConnectPage()"
+    />
+    <ConnectPage ref="connect_page_ref" />
   </div>
 </template>
 <script setup lang="ts">
@@ -56,6 +62,7 @@ import {
 import {
   useChatbotUserStore,
   useCommonStore,
+  useConnectPageStore,
   useConversationStore,
   useExtensionStore,
   useOrgStore,
@@ -70,6 +77,7 @@ import { RealtimeSocket } from '@/utils/helper/Socket'
 import { User } from '@/utils/helper/User'
 import { initRequireData, useDropFile } from '@/views/composable'
 import {
+  debounce,
   difference,
   intersection,
   keys,
@@ -82,6 +90,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import AlertAccountLimitReached from '@/components/AlertModal/AlertAccountLimitReached.vue'
+import DisconnectedPageWarning from '@/components/AlertModal/DisconnectedPageWarning.vue'
 
 import BellSound from '@/assets/sound/notification-sound.mp3'
 import AlertWarning from '@/components/AlertModal/AlertWarning.vue'
@@ -89,6 +98,7 @@ import HotAlert from '@/components/HotAlert.vue'
 import CenterContent from '@/views/ChatWarper/Chat/CenterContent.vue'
 import LeftBar from '@/views/ChatWarper/Chat/LeftBar.vue'
 import RightBar from '@/views/ChatWarper/Chat/RightBar.vue'
+import ConnectPage from '@/views/Dashboard/ConnectPage.vue'
 import Layout from '@/views/ChatWarper/Layout.vue'
 import Menu from '@/views/ChatWarper/Menu.vue'
 
@@ -107,6 +117,7 @@ const pageStore = usePageStore()
 const chatbotUserStore = useChatbotUserStore()
 const conversationStore = useConversationStore()
 const commonStore = useCommonStore()
+const connectPageStore = useConnectPageStore()
 const extensionStore = useExtensionStore()
 const orgStore = useOrgStore()
 
@@ -125,6 +136,21 @@ const { onDropFile } = useDropFile()
 const is_focus_chat_tab = ref(true)
 /**ref modal cảnh báo hết gói */
 const ref_alert_reach_quota = ref<InstanceType<typeof AlertWarning>>()
+/** ref popup cảnh báo quyền truy cập sau khi đã vào bên trong màn chat */
+const disconnect_warning_modal_ref =
+  ref<InstanceType<typeof DisconnectedPageWarning>>()
+/** ref ConnectPage dùng cho nút "Cấp lại quyền" trong popup cảnh báo */
+const connect_page_ref = ref<InstanceType<typeof ConnectPage>>()
+/**
+ * Thông tin của page đang bị mất quyền truy cập.
+ * Dữ liệu này được lấy từ store tạm rồi giữ cục bộ trong ChatWarper
+ * để phục vụ thao tác đóng popup hoặc mở lại ConnectPage.
+ */
+const disconnect_warning_info = ref<{
+  page_id?: string
+  org_id?: string
+  page_type?: string
+}>()
 
 /**ref modal cảnh báo hết giới hạn gói */
 const ref_alert_reach_limit =
@@ -213,6 +239,58 @@ watch(
 /**chuyển đến trang dashboard */
 function goDashboard() {
   $router.push('/dashboard')
+}
+/** đóng popup cảnh báo page mất quyền truy cập */
+function closeDisconnectWarning() {
+  disconnect_warning_modal_ref.value?.toggleModal()
+  disconnect_warning_info.value = undefined
+}
+
+/**
+ * Mở giao diện để kết nối lại trang đang bị mất quyền truy cập.
+ * Tại sao: Giúp người dùng nhanh chóng thực hiện cấp lại quyền truy cập cho trang mà không cần tìm kiếm thủ công.
+ */
+function openDisconnectConnectPage() {
+  // đóng modal cảnh báo hiện tại
+  disconnect_warning_modal_ref.value?.toggleModal()
+
+  // tự động chuyển về đúng tổ chức của trang bị lỗi để thực hiện kết nối lại
+  if (disconnect_warning_info.value?.org_id) {
+    orgStore.selected_org_id = disconnect_warning_info.value.org_id
+    orgStore.selected_org_info = orgStore.list_org?.find(
+      org => org.org_id === orgStore.selected_org_id
+    )
+    orgStore.is_selected_all_org = false
+  }
+
+  // hiển thị menu và mở modal kết nối tương ứng với loại trang (Facebook, Zalo,...)
+  connectPageStore.is_hidden_menu = false
+  connect_page_ref.value?.toggleModal(disconnect_warning_info.value?.page_type)
+
+  // xóa thông tin cảnh báo tạm sau khi đã điều hướng xong
+  disconnect_warning_info.value = undefined
+}
+
+/**
+ * Kiểm tra xem có yêu cầu hiển thị cảnh báo trang mất kết nối hay không.
+ * Tại sao: Khi người dùng chọn trang từ Dashboard, nếu trang đó lỗi, hệ thống cần thông báo ngay khi vào màn hình chat.
+ */
+function showDisconnectWarningIfNeeded() {
+  // kiểm tra thông tin cảnh báo đang được treo trong store
+  const pending = pageStore.pending_disconnected_page_warning
+  if (!pending?.page_id) return
+
+  // lấy dữ liệu trang thực tế để kiểm tra lại trạng thái
+  const page = pageStore.selected_page_list_info?.[pending.page_id]?.page
+  // xóa cảnh báo chờ trong store để tránh hiện lại nhiều lần
+  pageStore.clearPendingDisconnectedPageWarning()
+
+  // nếu trang vẫn kết nối bình thường thì dừng lại
+  if (!page?.is_disconnected) return
+
+  // lưu thông tin trang lỗi và bật popup cảnh báo cho người dùng
+  disconnect_warning_info.value = pending
+  disconnect_warning_modal_ref.value?.toggleModal()
 }
 /**kiểm tra xem người dùng có đang ở trong tab chatbox không */
 function checkFocusChatTab($event: FocusEvent) {
@@ -474,11 +552,25 @@ function triggerAlert(conversation?: ConversationInfo) {
   /** nếu người dùng đang focus vào tab chat thì không cần thông báo */
   if (is_focus_chat_tab.value) return
 
-  /** phát nhạc thông báo */
-  ringBell()
+  const PAGE_ID = conversation?.fb_page_id
+  /** 
+   * Đọc cấu hình từ Billing OwnerShip (lưu trong orgStore.list_os). 
+   * Trả về undefined nếu không có cấu hình.
+   */
 
-  /** bắn web noti */
-  pushWebNoti(conversation)
+  const PAGE_CONFIG = orgStore.list_os?.find(
+    (item: any) => item?.page_id === PAGE_ID
+  )?.page_info
+ 
+  /** chỉ phát nhạc khi cấu hình cho phép (is_sound_new_message === true) */
+  if (PAGE_CONFIG?.is_sound_new_message) {
+    ringBell()
+  }
+
+  /** chỉ hiện web noti khi cấu hình cho phép (is_alert_new_message === true) */
+  if (PAGE_CONFIG?.is_alert_new_message) {
+    pushWebNoti(conversation)
+  }
 }
 /**gửi thông báo bằng web noti - không chạy trên mac */
 async function pushWebNoti(conversation?: ConversationInfo) {
@@ -511,12 +603,20 @@ async function pushWebNoti(conversation?: ConversationInfo) {
   /** tắt noti */
   NOTI.close()
 }
-/**phát nhạc thông báo */
-function ringBell() {
-  const BELL = new Audio(BellSound)
-  BELL.volume = 0.3
-  BELL.play()
-}
+/**phát nhạc thông báo (chỉ reo sau khi đã ngừng spam tin nhắn được 3s) */
+const ringBell = debounce(
+  async () => {
+    try {
+      const BELL = new Audio(BellSound)
+      BELL.volume = 0.3
+      await BELL.play()
+    } catch (error) {
+      console.error('Cannot play notification sound', error)
+    }
+  },
+  3000,
+  { leading: false, trailing: true }
+)
 /**kiểm tra xem người dùng có cấp quyền cho phép thông báo không */
 function checkAllowNoti() {
   /** lưu ý web noti chỉ chạy trên window, mac không chạy */
@@ -627,6 +727,9 @@ function validateConversation(
   )
     return
 
+  /** nếu conversation từ socket đã tồn tại trong danh sách thì bỏ qua bộ lọc, cho phép update */
+  const DATA_KEY_LABEL = `${conversation.fb_page_id}_${conversation.fb_client_id}`
+
   /** lọc nhãn hoặc */
   if (
     conversationStore.option_filter_page_data.label_id &&
@@ -634,7 +737,8 @@ function validateConversation(
     !intersection(
       conversationStore.option_filter_page_data.label_id,
       conversation.label_id,
-    ).length
+    ).length &&
+    !conversationStore.conversation_list?.[DATA_KEY_LABEL]
   )
     return
 
@@ -647,7 +751,8 @@ function validateConversation(
       difference(
         conversationStore.option_filter_page_data.label_id,
         conversation.label_id,
-      ).length)
+      ).length) &&
+    !conversationStore.conversation_list?.[DATA_KEY_LABEL]
   )
     return
 
@@ -657,7 +762,7 @@ function validateConversation(
     intersection(
       conversationStore.option_filter_page_data.not_label_id,
       conversation.label_id,
-    ).length
+    ).length && !conversationStore.conversation_list?.[DATA_KEY_LABEL]
   )
     return
 
@@ -743,6 +848,11 @@ class Main {
 
       /**  lưu dữ liệu trang đã chọn*/
       pageStore.selected_page_list_info = pages
+      /**
+       * Chỉ sau khi màn chat đã có dữ liệu page thực tế mới quyết định hiển thị popup cảnh báo.
+       * Cách làm này giúp popup xuất hiện "bên trong page" thay vì bật ngay ở Dashboard.
+       */
+      showDisconnectWarningIfNeeded()
 
       /**  lưu dữ liệu nhân viên của các trang đã chọn*/
       pageStore.selected_pages_staffs = User.getUsersInfo(pages)

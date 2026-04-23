@@ -238,18 +238,21 @@ function assignConversationtoStaff(staff: StaffInfo | null) {
 
 function searchStaff(search: string) {
   const SEARCH = nonAccentVnSearch(search || "")
+  const STAFF_LIST = map(snap_staffs.value)
 
   /** nếu không search thì trả toàn bộ */
   if (!SEARCH) {
-    staffs.value = map(snap_staffs.value)
+    staffs.value = STAFF_LIST
+    pushStaffSelectedToTop()
     return
   }
   
  /** Lọc nhân viên theo tên */
-  staffs.value = map(snap_staffs.value)?.filter(staff => {
+  staffs.value = STAFF_LIST?.filter(staff => {
     const NAME = nonAccentVnSearch(staff?.name || "")
     return NAME.includes(SEARCH)
   })
+  pushStaffSelectedToTop()
 }
 /** Đưa nhân viên được assign lên đầu danh sách */
 function pushStaffSelectedToTop() {

@@ -748,6 +748,8 @@ export interface IPage
 export interface PageData {
   /**tạo data key cho vitual scroll */
   data_key?: string
+  /** chuỗi đã chuẩn hóa để tối ưu tìm kiếm phía client */
+  search_index?: string
   page?: IPage
   staff_list?: AllStaffList
   label_list?: Record<string, ILabel>

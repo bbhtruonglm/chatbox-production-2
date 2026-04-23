@@ -1,5 +1,10 @@
 <template>
-  <div class="flex gap-3">
+  <div
+    :class="{
+      'opacity-50': is_delete_comment,
+    }"
+    class="flex gap-3"
+  >
     <PageAvatar
       v-if="is_from_page"
       :page_info="conversationStore.getPage()"
@@ -71,20 +76,45 @@
           "
         />
         <div class="font-medium text-sm flex items-center gap-5">
-          <button @click="$main.focusInput({ type: 'REPLY' })">
+          <button
+            :disabled="is_delete_comment"
+            :class="{
+              'cursor-not-allowed opacity-50': is_delete_comment,
+            }"
+            @click="$main.focusInput({ type: 'REPLY' })"
+          >
             {{ $t('v1.view.main.dashboard.chat.post.reply_comment') }}
           </button>
           <button
             v-if="!is_from_page"
+            :disabled="is_delete_comment"
+            :class="{
+              'cursor-not-allowed opacity-50': is_delete_comment,
+            }"
             @click="$main.toggleComment()"
           >
             {{ $t('v1.view.main.dashboard.chat.post.hide_comment') }}
           </button>
           <button
             v-if="!is_from_page && !comment?.is_private_reply"
+            :disabled="is_delete_comment"
+            :class="{
+              'cursor-not-allowed opacity-50': is_delete_comment,
+            }"
             @click="$main.focusInput({ type: 'PRIVATE_REPLY' })"
           >
             {{ $t('v1.view.main.dashboard.chat.post.private_inbox') }}
+          </button>
+                    <button
+            v-if="!is_from_page"
+            :disabled="is_delete_comment"
+            :class="{
+              // Khi comment đã bị xóa thì khóa nút xóa để tránh gọi API lặp lại.
+              'cursor-not-allowed opacity-50': is_delete_comment,
+            }"
+            @click="$main.deleteComment()"
+          >
+            {{ $t('Xóa bình luận') }}
           </button>
         </div>
       </div>
@@ -175,6 +205,7 @@ import type {
 import type { IAlert } from '@/utils/helper/Alert/type'
 import type { Handler } from 'mitt'
 import { listenerEventBus } from '@/event'
+import { ConfirmSingleton } from '@/utils/helper/Alert/Confirm'
 
 /**dữ liệu của sự kiện focus */
 interface IFocusInputPayload {
@@ -254,6 +285,8 @@ const client_id = computed(
 const is_from_page = computed(() => page_id.value === $props.comment?.from?.id)
 /**cảm xúc của bình luận này */
 const emotion = computed(() => $props.comment?.ai?.[0]?.emotion)
+/**gom trạng thái comment đã bị xóa để tái sử dụng ở template và logic xử lý */
+const is_delete_comment = computed(() => !!$props.comment?.is_delete_comment)
 /**dữ liệu nhắn tin nâng cao của bình luận này */
 const message_source = computed<MessageTemplateInput>(
   () =>
@@ -273,6 +306,7 @@ class Main {
     private readonly SERVICE_TOAST: IAlert = container.resolve(
       ToastReplyComment,
     ),
+    private readonly SERVICE_CONFIRM: IAlert = ConfirmSingleton.getInst(),
   ) {}
 
   /**ẩn hiện bình luận */
@@ -296,6 +330,45 @@ class Main {
     this.SERVICE_TOAST.success($t('Đã ẩn bình luận'))
   }
   /** Lấy bình luận phụ từ bình luận chính của fb */
+  @error(container.resolve(ToastReplyComment))
+  async deleteComment() {
+    const COMMENT = $props.comment
+
+    // Gom điều kiện chặn sớm để tránh lặp lại nhiều lần khi dùng dữ liệu comment bên dưới.
+    if (
+      !page_id.value ||
+      !COMMENT?.comment_id ||
+      !COMMENT?.from?.id ||
+      is_delete_comment.value
+    )
+      return
+
+    // Nếu đang loading thì chặn không cho thao tác tiếp
+    if (main_loading.value) return
+
+    const IS_CONFIRM = await this.SERVICE_CONFIRM.warning(
+      $t('Bạn có chắc muốn xoá bình luận này không?'),
+    )
+    if (!IS_CONFIRM) return
+
+    try {
+      main_loading.value = true
+
+      // Gọi API xóa comment hiện tại khỏi bài post.
+      await this.API_POST.deleteComment(
+        page_id.value,
+        COMMENT.from.id,
+        $props.post_id,
+        COMMENT.comment_id,
+      )
+
+      // Chỉ đánh dấu đã xóa để giữ comment trên danh sách và hiển thị trạng thái bị mờ.
+      COMMENT.is_delete_comment = true
+      this.SERVICE_TOAST.success($t('Đã xoá bình luận'))
+    } finally {
+      main_loading.value = false
+    }
+  }
   @loadingV2(main_loading, 'value', false)
   @error()
   async getFbPostChildComments() {

@@ -985,12 +985,16 @@ watch(
   },
 )
 
-/** khi lần đầu vào app lắng nghe dữ liệu người dùng hiện tại được set thì lấy 1 hội thoại để hiện nhanh ra trước */
+/** khi lần đầu vào app lắng nghe dữ liệu người dùng hiện tại và dữ liệu org được set thì lấy 1 hội thoại để hiện nhanh ra trước */
 watch(
-  () => chatbotUserStore.chatbot_user,
+  () => [chatbotUserStore.chatbot_user, orgStore.selected_org_info],
   async (new_value, old_value) => {
-    // chỉ chạy lần đầu khi lưu dữ liệu vào chatbot_user
-    if (!old_value) return
+    // chỉ chạy 1 lần
+    if (old_value?.[0] && old_value?.[1]) return
+
+    // nếu chưa có dữ liệu thì return
+    if (!new_value[0] || !new_value[1]) return
+
     // call 1 dữ liệu hội thoại để hiện nhanh ra trước
     $main.loadOneConversationBefore()
   },

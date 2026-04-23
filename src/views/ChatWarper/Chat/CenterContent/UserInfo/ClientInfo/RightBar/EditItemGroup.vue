@@ -24,10 +24,12 @@
               @input="
                 conversationStore.is_edit_client.contact_update[item._id!] = 1
               "
+              :disabled="isContactEditDisabled"
               :placeholder
-              class="py-2 px-3 rounded-md border focus:outline-none w-80"
+              class="py-2 px-3 rounded-md border focus:outline-none w-80 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
             />
             <BinIcon
+              v-if="!isContactEditDisabled"
               @click="removeContact(item._id!)"
               class="text-slate-500 w-5 h-5 cursor-pointer hidden group-hover:block"
             />
@@ -37,7 +39,11 @@
       <div
         v-if="conversationStore.is_edit_info"
         @click="addContact"
-        class="text-sm font-medium text-slate-500 cursor-pointer"
+        :class="{
+          'cursor-pointer': !isContactEditDisabled,
+          'cursor-not-allowed opacity-50': isContactEditDisabled,
+        }"
+        class="text-sm font-medium text-slate-500"
       >
         + {{ create_title }}
       </div>
@@ -45,7 +51,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { useConversationStore } from '@/stores'
+import { computed } from 'vue'
+import { useConversationStore, useOrgStore } from '@/stores'
 import { remove } from 'lodash'
 import { confirmSync } from '@/service/helper/alert'
 import { useI18n } from 'vue-i18n'
@@ -55,6 +62,7 @@ import BinIcon from '@/components/Icons/Bin.vue'
 import type { ContactInfo } from '@/utils/api/Ai'
 
 const conversationStore = useConversationStore()
+const orgStore = useOrgStore()
 const { t: $t } = useI18n()
 
 const $props = withDefaults(
@@ -72,8 +80,41 @@ const $props = withDefaults(
   {}
 )
 
-/**thêm liên hệ */
+/** 
+ * Kiểm tra xem có khóa chỉnh sửa thông tin liên hệ hay không
+ * Lấy cấu hình từ PageStore hiện hành hoặc từ Billing OwnerShip (list_os)
+ */
+//TODO: hiện tại Backend đang chỉ check theo type là PHONE, cần phải bắt thêm type là EMAIL
+const isContactEditDisabled = computed(() => {
+  // Chỉ áp dụng logic ẩn/khóa chỉnh sửa cho SĐT và Email
+  if (!['PHONE', 'EMAIL'].includes($props.type || '')) return false
+
+  /** Dữ liệu trang Fanpage hiện tại của hội thoại */
+  const PAGE = conversationStore.getPage()
+  /** ID của trang Fanpage */
+  const PAGE_ID = PAGE?.fb_page_id
+  /** Tên trường cấu hình ẩn thông tin (Hiện tại đang cố định là hide_phone theo yêu cầu TODO) */
+  const HIDE_FIELD = 'is_hide_phone'
+
+  // 1. Check trực tiếp trong cấu hình Page mới nhất từ API Billing (list_os)
+  if (PAGE_ID && orgStore.list_os?.length) {
+    /** Thông tin cấu hình chi tiết của Page trong danh sách OS */
+    const os = orgStore.list_os.find((item: any) => item?.page_id === PAGE_ID)
+    if (os?.page_info?.[HIDE_FIELD]) return true
+  }
+
+  // Ưu tiên 2: Fallback kiểm tra từ dữ liệu Page của Chat server
+  // Sử dụng khi dữ liệu từ Billing chưa kịp cập nhật hoặc không tìm thấy
+  return !!PAGE?.[HIDE_FIELD]
+})
+
+/**
+ * Thêm một bản ghi liên hệ mới vào danh sách
+ * Để người dùng có thể bổ sung thêm các thông tin liên lạc khác cho khách hàng
+ */
 function addContact() {
+  if (isContactEditDisabled.value) return
+
   /**id tạm của liên hệ này */
   const TEMP_ID = Date.now().toString()
 
@@ -87,8 +128,13 @@ function addContact() {
   // lưu lại id tạm vào danh sách liên hệ cần tạo
   conversationStore.is_edit_client.contact_create[TEMP_ID] = 1
 }
-/**xoá liên hệ */
+/**
+ * Xóa một bản ghi liên hệ khỏi danh sách
+ * Để người dùng có thể loại bỏ các thông tin liên lạc không chính xác hoặc không cần thiết
+ */
 async function removeContact(id: string) {
+  if (isContactEditDisabled.value) return
+
   // cảnh báo trước khi xoá
   if (
     !(await confirmSync(

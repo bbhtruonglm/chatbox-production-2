@@ -713,6 +713,7 @@ const source: Language = {
             you: 'Bạn:',
             empty_message: 'Hãy chọn 1 hội thoại để bắt đầu trò chuyện',
             uploading_image: 'Đang tải ảnh lên',
+            preparing_upload: 'Đang chuẩn bị tải lên',
             empty_conversation: 'Không tìm thấy hội thoại!',
             empty_select_conversation: 'Chọn một khách hàng để bắt đầu!',
             assign_staff: {
@@ -1236,6 +1237,7 @@ const source: Language = {
               pack_time: 'Thời gian sử dụng',
               page_amount: 'Số lượng trang',
               last_reset: 'Làm mới gói gần nhất',
+              next_reset: 'Làm mới gói tiếp theo',
               staff_amount: 'Số lượng nhân sự',
               bot: 'Chatbot',
               chat_feature: 'Các tính năng chat',

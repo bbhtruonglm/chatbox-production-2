@@ -3,7 +3,7 @@
         <template v-slot:body>
             <div class="flex flex-col md:flex-row h-[70vh] overflow-y-auto md:h-full">
                 <div class="flex flex-col items-center p-5">
-                    <StaffAvatar class="rounded-full w-20 h-20" :id="chatbotUserStore.chatbot_user?.fb_staff_id" />
+                    <StaffAvatar class="rounded-full w-20 h-20" :id="chatbotUserStore.getStaffId()" />
                     <p class="text-lg font-bold mt-1">{{ chatbotUserStore.chatbot_user?.full_name }}</p>
                     <p class="mt-5 text-center whitespace-nowrap text-slate-600">
                         {{ $t('v1.view.main.dashboard.chat.facebook_errors.190.need_account') }} 

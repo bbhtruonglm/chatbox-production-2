@@ -32,7 +32,7 @@
     </template>
     <template #title>
       <div class="flex-shrink-0">
-        {{ pageStore.map_orgs?.map_org_info?.[org_id]?.org_info?.org_name }}
+        {{ pageStore.map_orgs?.map_org_info?.[org_id]?.org_info?.org_name }} 
       </div>
       <Group :org_id />
     </template>
@@ -122,15 +122,16 @@ class Main {
     active_page_list.value = sortListPage(filter_page_list.value)
   }
 
-  /** đếm số page của tổ chức hiện tại với nền tảng đang được lọc */
+  /** đếm số page của tổ chức hiện tại với nền tảng đang được lọc (nhưng không bị ẩn bởi filter group) */
   countPage(): number {
-    // console.log('active_page_list', pageStore.active_page_list)
-    /** các page của tổ chức hiện tại */
-    const PAGE_OF_THIS_ORG = filter(pageStore.active_page_list, page =>
-      this.isInCurrentOrg(page)
-    )
+    /** Dùng danh sách của tổ chức (chưa qua filter group) để luôn hiển thị khung Org và list Group kể cả khi chọn group rỗng */
 
+     const PAGE_OF_THIS_ORG = filter(pageStore.active_page_list, page =>
+      this.isInCurrentOrg(page)
+     )
     return size(PAGE_OF_THIS_ORG)
+    // return size(page_of_current_org.value)
+    // return size(filter_page_list.value)
   }
 
   /**trang có thuộc tổ chức hiện tại không */

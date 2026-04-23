@@ -10,7 +10,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 mt-2 gap-4">
                 <div class="flex items-center bg-slate-50 rounded-lg p-2 h-fit">
                     <div>
-                        <StaffAvatar class="rounded-full w-10 h-10" :id="chatbotUserStore.chatbot_user?.fb_staff_id" />
+                        <StaffAvatar class="rounded-full w-10 h-10" :id="chatbotUserStore.getStaffId()" />
                     </div>
                     <div class="ml-2">
                         <div>

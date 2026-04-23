@@ -104,6 +104,20 @@ export class N4SerivceAppPost extends N4Serivce {
     })
   }
   /**đọc info 1 bài post */
+  public async deleteComment(
+    page_id: string,
+    client_id: string,
+    post_id: string,
+    target_id: string
+  ): Promise<ISendCommentRes> {
+    // Xóa comment theo đúng payload backend yêu cầu.
+    return this.post('delete_comment', {
+      page_id,
+      client_id,
+      post_id,
+      target_id,
+    })
+  }
   public async getPost(
     page_id: string,
     post_id?: string,

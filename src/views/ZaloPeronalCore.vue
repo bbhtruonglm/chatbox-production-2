@@ -6,14 +6,14 @@
     v-if="view"
   >
     <div
-      class="bg-white py-2 px-3 rounded-lg gap-2 flex items-center text-slate-700"
+      class="bg-white py-2 px-3 rounded-lg gap-2 w-full flex items-center text-slate-700"
     >
-      {{ $t('Chọn Zalo cá nhân:') }}
+      <p class="flex-shrink-0">{{ $t('Chọn Zalo cá nhân:') }}</p>
       <button
-        class="flex items-center gap-2 flex-grow"
+        class="flex items-center gap-2 flex-grow min-w-0"
         @click="zalo_personal_dropdown_ref?.toggleDropdown"
       >
-        <div class="flex flex-grow items-center gap-1">
+        <div class="flex flex-grow min-w-0 items-center gap-1">
           <ExclamationTriangleIcon
             v-if="selected_page_info?.is_disconnected"
             v-tooltip.bottom="$t('Trang mất quyền truy cập, cần cấp lại quyền')"
@@ -25,7 +25,7 @@
             :page_info="selected_page_info"
             class="rounded-full size-5"
           />
-          <p class="text-slate-700">{{ selected_page_info?.name }}</p>
+          <p class="text-slate-700 truncate flex-grow">{{ selected_page_info?.name }}</p>
         </div>
         <ChevronDownIcon class="size-5" />
       </button>
@@ -115,13 +115,14 @@
             query_string_data.phone &&
             !is_loading_zalo_personal
           "
-          class="flex flex-col items-center pt-5"
+          class="flex flex-col items-center pt-5 text-center px-[20px]"
         >
           <img
+            v-if="!error_message"
             :src="EmptyContact"
             class="size-24"
           />
-          <p>{{ $t('Không có khách hàng') }}</p>
+          <p>{{ error_message || $t('Không có khách hàng') }}</p>
         </div>
       </section>
     </template>
@@ -409,6 +410,9 @@ const zalo_personal = ref<{
   client_phone?: string
   is_accept_friend_request?: boolean
 }>({})
+
+/** Thông báo lỗi khi tìm kiếm hoặc thao tác với tài khoản Zalo cá nhân.*/
+const error_message = ref('')
 
 /**id trang được chọn */
 const selected_page_id = ref<string>()
@@ -812,7 +816,6 @@ class Main {
   }
 
   /** lấy thông tin khách hàng */
-  @error($custom_toast)
   @loadingV2(is_loading_zalo_personal, 'value')
   async getInfoZaloPersonal() {
     // nếu không có id trang thì thôi
@@ -833,28 +836,66 @@ class Main {
 
     // reset dữ liệu khách hàng
     zalo_personal.value = {}
+    error_message.value = ''
 
     /** dữ liệu khách hàng zalo cá nhân */
-    const RES = await this.API.getInfoZaloPersonal({
-      page_id: selected_page_id.value,
-      message_id: query_string_data.value.message_id || undefined,
-      client_phone: phone || undefined,
-    })
+    let res: Awaited<ReturnType<N4SerivceAppZaloPersonal['getInfoZaloPersonal']>>
+
+    try {
+      res = await this.API.getInfoZaloPersonal(
+        {
+          page_id: selected_page_id.value,
+          message_id: query_string_data.value.message_id || undefined,
+          client_phone: phone || undefined,
+        },
+        true,
+      )
+    } catch (e: any) {
+      // nếu chưa có view thì fallback về màn search
+      if (!view.value) {
+        view.value = 'SEARCH'
+      }
+      
+      /** mã lỗi của zalo */
+      const ZCA_ERROR_CODE = Number(
+        e?.mean?.code ||
+        e?.message?.code
+      )
+      switch (ZCA_ERROR_CODE) {
+        case 216:
+          error_message.value = $t('Tài khoản Zalo này đã bị khóa.')
+          break
+        case 212:
+        case 210:
+          error_message.value = $t('Số điện thoại này đã chặn tìm kiếm.')
+          break
+        case 219:
+          error_message.value = $t(
+            'Không tìm thấy người dùng với số điện thoại này.',
+          )
+          break
+        default:
+          error_message.value = $t(
+            'Số điện thoại chưa đăng ký tài khoản hoặc không cho phép tìm kiếm.',
+          )
+      }
+      return
+    }
 
     // lưu lại dữ liệu khách hàng
-    zalo_personal.value = RES
+    zalo_personal.value = res
 
     // nếu có client_id thì
-    if (RES?.client_id) {
+    if (res?.client_id) {
       // lưu lại client_id
-      client_id.value = RES?.client_id
+      client_id.value = res?.client_id
       // lấy dữ liệu hội thoại của khách hàng đó
       this.getConversation()
     }
 
     if (!view.value) {
       // nếu là mở ở tin nhắn và đã kết bạn thì vào chat luôn
-      if (RES?.is_accept_friend_request && query_string_data.value.message_id) {
+      if (res?.is_accept_friend_request && query_string_data.value.message_id) {
         view.value = 'CHAT'
       }
       // nếu không thì mở màn search số với lần đầu load từ lần sau thì thôi giữ nguyên
@@ -863,7 +904,7 @@ class Main {
       }
     } else {
       // đã kết bạn thì chuyển về màn chat
-      if (RES?.is_accept_friend_request && view.value !== 'SEARCH') {
+      if (res?.is_accept_friend_request && view.value !== 'SEARCH') {
         view.value = 'CHAT'
       }
     }
@@ -963,6 +1004,14 @@ onUnmounted(() => {
 })
 
 const search_input = ref<HTMLInputElement | null>(null)
+
+/** Theo dõi sự thay đổi của số điện thoại để xóa thông báo lỗi cũ.*/
+watch(
+  () => query_string_data.value.phone,
+  () => {
+    error_message.value = ''
+  },
+)
 
 watch(
   () => view.value,

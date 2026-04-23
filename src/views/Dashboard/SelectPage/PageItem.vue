@@ -110,8 +110,11 @@ function isPageAdmin(page: PageData): boolean {
 }
 /**click chọn vào 1 trang */
 function selectPage() {
-  // nếu mất kết nối thì thôi- để trong PageItem xử lý bật modal để kết nối lại
-  if ($props.page_info?.is_disconnected) return
+  /**
+   * Logic cũ chặn page bị mất quyền truy cập ngay từ Dashboard.
+   * Hiện tại đã bỏ chặn để người dùng vẫn vào được màn chat,
+   */
+  // if ($props.page_info?.is_disconnected) return
 
   // nếu là mobile thì thông báo tải app
   if ($device.isMobile()) return $router.push('/download-app')
@@ -141,6 +144,22 @@ function isSelectedThisPage() {
 function selectOnePage() {
   // nếu không có id trang thì thôi
   if (!page_id.value) return
+
+  /**
+   * Nếu page đang mất quyền truy cập, chỉ ghi nhận thông tin tạm vào store
+   * rồi vẫn tiếp tục điều hướng vào chat như bình thường.
+   * ChatWarper sẽ đọc dữ liệu này để hiện popup cảnh báo sau khi vào bên trong page.
+   */
+  if ($props.page_info?.is_disconnected) {
+    pageStore.pending_disconnected_page_warning = {
+      page_id: page_id.value,
+      org_id: $props.org_id,
+      page_type: $props.page_info?.type,
+    }
+  } else {
+    // Nếu chuyển sang một page bình thường, cần xóa cờ cũ để tránh popup hiện nhầm.
+    pageStore.clearPendingDisconnectedPageWarning()
+  }
 
   // tạo ra mảng chỉ chứa 1 id trang được chọn
   let temp: {

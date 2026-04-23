@@ -330,6 +330,7 @@ const source: Language = {
   'Gói hiện tại': 'Current package',
   'File vượt quá dung lượng cho phép': 'File size exceeds the allowed limit',
   'Vui lòng chuyển sang tài khoản TikTok Business': 'Please switch to TikTok Business account',
+  'thông báo khác': 'other notifications',
 
   v1: {
     common: {
@@ -915,6 +916,7 @@ const source: Language = {
             you: 'You:',
             empty_message: 'Please select a conversation to start chatting',
             uploading_image: 'Uploading image',
+            preparing_upload: 'Preparing upload',
             empty_conversation: 'No conversation found!',
             empty_select_conversation: 'Select a customer to start!',
             assign_staff: {
@@ -1437,6 +1439,7 @@ const source: Language = {
               page_amount: 'Page amount',
 
               last_reset: 'Package last reset',
+              next_reset: 'Package next reset',
               staff_amount: 'Staff amount',
               bot: 'Chatbot',
               chat_feature: 'Chat features',

@@ -14,7 +14,6 @@
   </div>
 </template>
 <script setup lang="ts">
-import { usePageStore } from '@/stores'
 import { SingletonCdn } from '@/utils/helper/Cdn'
 import { ref } from 'vue'
 
@@ -25,11 +24,11 @@ const $props = withDefaults(
   {}
 )
 
-const pageStore = usePageStore()
 const $cdn = SingletonCdn.getInst()
 
 /**kích thước thực tế */
 const SIZE = 64
+const DEFAULT_AVATAR = `${$env.img_host}/1111111111?width=${SIZE}&height=${SIZE}`
 /**thêm hiệu ứng ẩn hiện khi ảnh đang được load */
 const animate_pulse = ref('animate-pulse')
 
@@ -41,14 +40,18 @@ function removeAnimatePulse() {
 function onImageError($event: Event) {
   const image = $event.target as HTMLImageElement
 
-  image.src = `${$env.img_host}/1111111111?width=${SIZE}&height=${SIZE}`
+  image.src = DEFAULT_AVATAR
 }
 /**lấy id của fb */
 function getFbAsId() {
-  return $props.id
+  return $props.id?.trim()
 }
 /**tạo url ảnh */
 function loadImageUrl() {
-  return $cdn.userAvt(getFbAsId())
+  const STAFF_ID = getFbAsId()
+
+  if (!STAFF_ID) return DEFAULT_AVATAR
+
+  return $cdn.userAvt(STAFF_ID)
 }
 </script>

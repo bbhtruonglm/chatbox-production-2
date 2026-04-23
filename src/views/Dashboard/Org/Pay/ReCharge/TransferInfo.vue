@@ -142,14 +142,11 @@ import { BBH_PAGE_MESS } from '@/configs/constants/botbanhang'
 import { copyToClipboard } from '@/service/helper/copyWithAlert'
 import { BillingAppTxn } from '@/utils/api/Billing'
 import BankQrCode from '@/views/Dashboard/Org/Pay/ReCharge/BankQrCode.vue'
-import type {
-  PaymentInfo,
-  TransactionInfo,
-} from '@/service/interface/app/billing'
-import { size } from 'lodash'
+import type { TransactionInfo } from '@/service/interface/app/billing'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useCommonStore } from '@/stores'
 import type { IBankAccount } from '@/utils/api/N4Service/Partner'
+import { useTransferPaymentInfo } from '@/views/composables/useTransferPaymentInfo'
 
 const $props = withDefaults(
   defineProps<{
@@ -170,28 +167,13 @@ const $props = withDefaults(
 )
 
 const commonStore = useCommonStore()
+const { calcPaymentInfo } = useTransferPaymentInfo()
 
 const txn_info = defineModel<TransactionInfo>()
 
 const check_payment = defineModel<Boolean>('check_payment')
 
-/**Thông tin chuyển khoản của cty */
-const BBH: IBankAccount = {
-  bank_bin: 970407,
-  account: '19036252323010',
-  name: 'CTCP Công nghệ Chatbot Việt Nam',
-  bank: 'Ngân hàng TMCP Kỹ thương Việt Nam(Techcombank) CN Hà thành',
-  code: 'BBH_TCB',
-}
-const A_TUNG_TIMO: IBankAccount = {
-  bank_bin: 963388,
-  account: '9021103769279',
-  name: 'Nguyễn Đình Tùng',
-  bank: 'Ngân hàng số Timo by Ban Viet Bank (Timo by Ban Viet Bank)',
-  code: 'TUNG_TIMO',
-}
-
-/**Thông tin chuyển khoản */
+/** thông tin chuyển khoản */
 const payment_info = ref<IBankAccount>()
 /**id của time out check giao dịch */
 const check_txn_timeout_id = ref<number>()
@@ -260,26 +242,5 @@ function checkTxnSuccess() {
       clearInterval(check_txn_timeout_id.value)
     }
   }, TIMER)
-}
-/**Tính toán thông tin chuyển khoản */
-function calcPaymentInfo(): IBankAccount {
-  /**xuất hóa đơn */
-  const INVOICE: IBankAccount =
-    commonStore.partner?.bank_account?.invoice || BBH
-  /**không xuất hóa đơn */
-  const NON_INVOICE: IBankAccount =
-    commonStore.partner?.bank_account?.non_invoice || A_TUNG_TIMO
-
-  // nếu không có mã, hoặc mã không bật chế độ đối tác, thì chuyển về cty
-  if (!$props?.is_pay_partner) return INVOICE
-
-  // nếu xuất hoá đơn thì vẫn chuyển về cty
-  if ($props?.is_issue_invoice) return INVOICE
-
-  // nếu không có thông tin đối tác thì chuyển về a Tùng
-  if (!size($props?.partner_info)) return NON_INVOICE
-
-  // nếu có thông tin đối tác thì chuyển về đối tác
-  return $props.partner_info || NON_INVOICE
 }
 </script>

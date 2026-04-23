@@ -39,7 +39,7 @@
               <div class="flex items-center gap-3">
                 <div class="relative">
                   <StaffAvatar
-                    :id="chatbotUserStore.chatbot_user?.user_id"
+                    :id="chatbotUserStore.getStaffId()"
                     class="rounded-oval w-11 h-11"
                   />
                   <div

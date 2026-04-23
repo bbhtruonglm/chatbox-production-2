@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative pt-[1px]">
     <img
       class="absolute top-2 left-3 w-5 h-5"
       src="@/assets/icons/search.svg"

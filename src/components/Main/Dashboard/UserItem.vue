@@ -5,7 +5,7 @@
     }" class="flex cursor-pointer items-center rounded-md hover:bg-orange-100">
         <div class="w-[40px] h-[40px] flex items-center justify-center relative">
             <!-- <img v-if="isActiveUser(chatbotUserStore.chatbot_user)" class="absolute top-[-14px] w-[17px]" src="@/assets/icons/crown.svg"> -->
-            <StaffAvatar class="rounded-full w-10 h-10" :id="chatbotUserStore.chatbot_user?.fb_staff_id" />
+            <StaffAvatar class="rounded-full w-10 h-10" :id="chatbotUserStore.getStaffId()" />
         </div>
         <div :class="is_only_show_icon ? 'md:hidden' : 'md:block'" class="ml-2">
             {{ chatbotUserStore.chatbot_user?.full_name }}

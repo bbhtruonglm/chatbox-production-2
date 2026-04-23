@@ -51,7 +51,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { sortBy, values } from 'lodash'
 import { useCommonStore, useConversationStore, usePageStore } from '@/stores'
 import { loading } from '@/utils/decorator/Loading'
@@ -86,6 +86,8 @@ const is_loading_label = ref(false)
 const labels = ref<ICustomLabel[]>([])
 /**tổng số nhãn bị ẩn */
 const total_over_label = ref<number>()
+/**đánh dấu lượt đếm hidden label mới nhất để tránh race condition khi reload */
+const count_hidden_request_id = ref(0)
 /** text hiển thị cho số lượng nhãn bị ẩn */
 const display_total_over_label = computed(() => {
   if (!total_over_label.value) return ''
@@ -126,10 +128,27 @@ class Main {
   }
   /**đếm số nhãn bị ẩn bởi css flex overflow-hidden  */
   private async countHiddenLabel(): Promise<void> {
-    total_over_label.value = await this.SERVICE_COUNT_HIDDEN_ITEM.exec(
+    const REQUEST_ID = ++count_hidden_request_id.value
+
+    // Chờ danh sách nhãn render xong rồi mới bắt đầu đo, tránh đo khi DOM chưa sẵn sàng.
+    await nextTick()
+
+    // Nếu không có nhãn hoặc container chưa có width thật thì coi như chưa có nhãn nào bị ẩn.
+    if (!labels.value.length || !ref_labels.value?.clientWidth) {
+      if (REQUEST_ID === count_hidden_request_id.value)
+        total_over_label.value = undefined
+      return
+    }
+
+    const TOTAL_OVER_LABEL = await this.SERVICE_COUNT_HIDDEN_ITEM.exec(
       'button',
       ref_labels.value
     )
+
+    // Chỉ lượt đếm mới nhất mới được phép cập nhật state, tránh kết quả cũ ghi đè khi reload.
+    if (REQUEST_ID !== count_hidden_request_id.value) return
+
+    total_over_label.value = TOTAL_OVER_LABEL
   }
 
   /**khởi tạo danh sách nhãn của trang của hội thoại đang chọn */

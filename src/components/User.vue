@@ -7,7 +7,7 @@
         class="absolute z-10 -right-2 -top-1"
       />
       <StaffAvatar
-        :id="chatbotUserStore.chatbot_user?.user_id"
+        :id="chatbotUserStore.getStaffId()"
         class="w-9 h-9 hover:brightness-90 rounded-full"
       />
     </div>

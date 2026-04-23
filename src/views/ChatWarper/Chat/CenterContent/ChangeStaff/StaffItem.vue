@@ -59,5 +59,5 @@ const $props = withDefaults(
 )
 
 /** ✅ Thêm option “Không chọn nhân viên” vào đầu danh sách */
-const staffListWithNone = computed(() => [...$props.staffs, null])
+const staffListWithNone = computed(() => [null, ...$props.staffs])
 </script>

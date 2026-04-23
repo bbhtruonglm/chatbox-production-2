@@ -48,7 +48,7 @@ export class N4SerivceAppZaloPersonal extends N4Serivce {
     message_id?: string
     client_id?: string
     client_phone?: string
-  }): Promise<{
+  }, is_raw_error = false): Promise<{
     client_id?: string
     client_name?: string
     client_avatar?: string
@@ -57,7 +57,7 @@ export class N4SerivceAppZaloPersonal extends N4Serivce {
     client_phone?: string
     is_accept_friend_request?: boolean
   }> {
-    return this.post('search_client', data)
+    return this.post('search_client', data, is_raw_error)
   }
 
   /**
